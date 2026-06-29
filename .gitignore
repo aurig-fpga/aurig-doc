@@ -1,0 +1,8 @@
+# Test scratch / generated doc artifacts
+test/build/
+test/.tmp_*
+test/**/.tmp_*
+*.bak
+
+# Claude Code local workspace
+.claude/

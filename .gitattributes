@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Normalize all text files to LF in the repository and on checkout, on every
+# platform. Prevents CRLF drift on Windows working trees.
+* text=auto eol=lf
+
+# Binary assets: never normalize.
+*.png binary
