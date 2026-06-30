@@ -88,6 +88,18 @@ header "Doc Runner: invalid format"
 set ec [run_runner -manifest $manifest -outdir [file join $build_dir bad_fmt] -format pdf]
 assert_true "invalid -format exits 2" [expr {$ec == 2}] "exit code was $ec"
 
+header "Doc Runner: no -manifest at all"
+set ec [run_runner -outdir [file join $build_dir no_manifest] -format html]
+assert_true "missing required -manifest exits 2" [expr {$ec == 2}] "exit code was $ec"
+
+header "Doc Runner: bare -manifest with no value"
+set ec [run_runner -manifest]
+assert_true "bare -manifest (no value) exits 2" [expr {$ec == 2}] "exit code was $ec"
+
+header "Doc Runner: unknown switch"
+set ec [run_runner -manifest $manifest -bogus_switch foo]
+assert_true "unknown switch exits 2" [expr {$ec == 2}] "exit code was $ec"
+
 header "Test Summary"
 set total [expr {$tests_passed + $tests_failed}]
 puts "Total:  $total"
