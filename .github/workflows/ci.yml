@@ -48,6 +48,7 @@ jobs:
           tests=(
             test/test_doc_dependency.tcl
             test/test_documenter.tcl
+            test/test_documenter_top.tcl
             test/test_doc_runner.tcl
             test/test_doc_tcllib_absent.tcl
             test/smoke/test_documenter_cleanup.tcl
