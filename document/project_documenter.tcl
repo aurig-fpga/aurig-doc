@@ -983,6 +983,7 @@ proc ::aurig::doc::project_documenter {args} {
     # side-effect-free: no half-created outdir, no stray LM_LOGO-full.png. This
     # is the first project-mode-YAML action.
     set ext [string tolower [file extension $config]]
+    set cfgFormat [expr {$ext in {.yaml .yml} ? "yaml" : "ini"}]
     if {$ext in {.yaml .yml}} {
         ::aurig::doc::_require_project_yaml_lib
     }
@@ -1107,7 +1108,7 @@ proc ::aurig::doc::project_documenter {args} {
         if {$verbosity > 0} { puts "No top-level specified, scanning all files from file_sets..." }
         
         # Collect all files from project
-        set allFiles [::aurig::core::util::collect_project_files -from $config -format [expr {$ext in {.yaml .yml} ? "yaml" : "ini"}]]
+        set allFiles [::aurig::core::util::collect_project_files -from $config -format $cfgFormat]
         
         # Aggregate all entities and packages across all files
         set allEntities {}
@@ -1347,105 +1348,22 @@ proc ::aurig::doc::project_documenter {args} {
     }
 
     # Original single-file mode: top-level specified
-    # Resolve top source path if relative
-    set topPath $top
-    set found 0
-    
-    # Determine if 'top' is a file path (contains / or \) or just an entity name
-    set isFilePath [expr {[string match "*/*" $top] || [string match "*\\*" $top]}]
-    
-    # If it's a file path, check with and without common extensions
-    if {$isFilePath} {
-        # Check if already has extension
-        set hasExt [expr {[string match "*.vhd" $top] || [string match "*.vhdl" $top]}]
-        set extensions [expr {$hasExt ? [list ""] : [list "" ".vhd" ".vhdl"]}]
-        
-        foreach ext $extensions {
-            set tryPath "${top}${ext}"
-            # Try as-is (relative to current directory or absolute)
-            if {[file exists $tryPath]} { 
-                set topPath $tryPath
-                set found 1
-                break 
-            }
-            # Try relative to project_root
-            if {$projectRoot ne ""} {
-                set candidate [file join $projectRoot $tryPath]
-                if {[file exists $candidate]} { 
-                    set topPath $candidate
-                    set found 1
-                    if {$verbosity > 1} { puts "  Found top-level file: $candidate" }
-                    break
-                }
-            }
-        }
-    } else {
-        # Entity name mode: search for matching file
-        set extensions [list "" ".vhd" ".vhdl"]
-        
-        # Try in project root
-        foreach ext $extensions {
-            set tryPath "${top}${ext}"
-            if {[file exists $tryPath]} { 
-                set topPath $tryPath
-                set found 1
-                break 
-            }
-            # Try relative to project_root
-            if {$projectRoot ne ""} {
-                set candidate [file join $projectRoot $tryPath]
-                if {[file exists $candidate]} { 
-                    set topPath $candidate
-                    set found 1
-                    if {$verbosity > 1} { puts "  Found top-level file: $candidate" }
-                    break
-                }
-            }
-        }
-        
-        # If not found, try in libraries
-        if {!$found && $libs ne ""} {
-            foreach lib [dict keys $libs] {
-                set libroot [dict get $libs $lib]
-                if {$projectRoot ne "" && [file pathtype $libroot] ne "absolute"} {
-                    set libroot [file join $projectRoot $libroot]
-                }
-                foreach ext $extensions {
-                    set candidate [file join $libroot "${top}${ext}"]
-                    if {[file exists $candidate]} { 
-                        set topPath $candidate
-                        set found 1
-                        if {$verbosity > 1} { puts "  Found top-level file in library '$lib': $candidate" }
-                        break
-                    }
-                }
-                if {$found} break
-            }
-        }
-    }
-    
-    if {!$found} { 
-        if {$isFilePath} {
-            error "project_documenter: cannot locate top-level file '$top' (tried relative to current dir and project_root)"
-        } else {
-            error "project_documenter: cannot locate top-level file matching entity '$top' (tried .vhd, .vhdl extensions in project_root and libraries)"
-        }
-    }
-
-    # Collect all files from project for recursive scanning
+    # Collect all files from the project manifest. This runs BEFORE top
+    # resolution: entity-name mode resolves the top entity against this
+    # list, then the recursive scan reuses it.
     if {$verbosity > 1} { puts "Collecting project files for recursive scan..." }
-    
+
     if {[catch {
-        set allFiles [::aurig::core::util::collect_project_files -from $config -format [expr {$ext in {.yaml .yml} ? "yaml" : "ini"}]]
+        set allFiles [::aurig::core::util::collect_project_files -from $config -format $cfgFormat]
     } err errOpts]} {
-        if {$verbosity > 0} { 
+        if {$verbosity > 0} {
             puts "ERROR: Failed to collect project files: $err"
             puts "ErrorInfo: [dict get $errOpts -errorinfo]"
         }
         set allFiles [dict create]
     }
-    
-    if {$verbosity > 2} { 
+
+    if {$verbosity > 2} {
         puts "  collect_project_files returned [dict size $allFiles] entries"
         if {[dict size $allFiles] > 0} {
             puts "  Sample entries:"
@@ -1458,39 +1376,39 @@ proc ::aurig::doc::project_documenter {args} {
             }
         }
     }
-    
+
     # Fallback: if collect_project_files returned nothing, manually parse file_sets
     if {[dict size $allFiles] == 0} {
         if {$verbosity > 1} { puts "  Fallback: manually parsing file_sets from YAML..." }
-        
+
         if {[dict exists $Y file_sets]} {
             set idx 0
             dict for {fsName entries} [dict get $Y file_sets] {
                 foreach entry $entries {
                     set lib [dict get $entry lib]
                     set srcGlobs [expr {[dict exists $entry src] ? [dict get $entry src] : {}}]
-                    
+
                     foreach g $srcGlobs {
                         set gabs $g
                         if {[file pathtype $gabs] ne "absolute"} {
                             set gabs [file normalize [file join $projectRoot $g]]
                         }
-                        
+
                         foreach f [glob -nocomplain $gabs] {
                             set full [file normalize $f]
                             set ext  [string tolower [file extension $full]]
                             set type [expr {$ext in {.vhd .vhdl} ? "vhdl" : "other"}]
-                            
+
                             set rec [dict create \
                                 name [file tail $full] \
                                 ext  $ext \
                                 type $type \
-                                library  $lib \
+                                lib      $lib \
                                 fullpath $full]
-                            
+
                             dict set allFiles f$idx $rec
                             incr idx
-                            
+
                             if {$verbosity > 2} { puts "    Added: $full (lib=$lib)" }
                         }
                     }
@@ -1499,7 +1417,7 @@ proc ::aurig::doc::project_documenter {args} {
             if {$verbosity > 1} { puts "  Manually collected [dict size $allFiles] files" }
         }
     }
-    
+
     # Build a map: entity_name -> file_path AND collect all package files
     set entityFileMap [dict create]
     set packageFiles [list]
@@ -1508,9 +1426,9 @@ proc ::aurig::doc::project_documenter {args} {
         if {[dict get $fileinfo type] ne "vhdl"} continue
         set filepath [dict get $fileinfo fullpath]
         incr fileCount
-        
+
         if {$verbosity > 2} { puts "  Scanning for entities: [file tail $filepath]" }
-        
+
         # Quick scan to get entity names and check for packages
         if {[catch {
             set pd [::aurig::core::analyze::vhdlscan -in $filepath -verbosity 0]
@@ -1518,15 +1436,15 @@ proc ::aurig::doc::project_documenter {args} {
                 # Store the file path for this entity (allow library-qualified names)
                 dict set entityFileMap $ename $filepath
                 if {$verbosity > 2} { puts "    Found entity: $ename -> [file tail $filepath]" }
-                
+
                 # Also store with library prefix if available
-                if {[dict exists $fileinfo library]} {
-                    set lib [dict get $fileinfo library]
+                if {[dict exists $fileinfo lib]} {
+                    set lib [dict get $fileinfo lib]
                     dict set entityFileMap "${lib}.${ename}" $filepath
                     if {$verbosity > 2} { puts "    Also mapped: ${lib}.${ename}" }
                 }
             }
-            
+
             # Check if this file has packages
             set pkgs [::aurig::core::analyze::q_packages $pd]
             if {[llength $pkgs] > 0 && [lsearch -exact $packageFiles $filepath] < 0} {
@@ -1537,19 +1455,135 @@ proc ::aurig::doc::project_documenter {args} {
             if {$verbosity > 0} { puts "  WARNING: Could not scan $filepath: $err" }
         }
     }
-    
-    if {$verbosity > 1} { 
+
+    if {$verbosity > 1} {
         puts "Built entity map from $fileCount VHDL files, [dict size $entityFileMap] entity mappings"
         puts "Found [llength $packageFiles] files containing packages"
     }
-    
+
     if {$verbosity > 2} {
         puts "  Entity map contents:"
         dict for {ent path} $entityFileMap {
             puts "    $ent -> [file tail $path]"
         }
     }
+
+    # Resolve top source path if relative
+    set topPath $top
+    set found 0
     
+    # Determine if 'top' is a file path (contains / or \) or just an entity name
+    set isFilePath [expr {[string match "*/*" $top] || [string match "*\\*" $top]}]
+
+    # If it's a file path, check with and without common extensions
+    if {$isFilePath} {
+        # Check if already has extension
+        set hasExt [expr {[string match "*.vhd" $top] || [string match "*.vhdl" $top]}]
+        set extensions [expr {$hasExt ? [list ""] : [list "" ".vhd" ".vhdl"]}]
+
+        foreach ext $extensions {
+            set tryPath "${top}${ext}"
+            # Try as-is (relative to current directory or absolute)
+            if {[file exists $tryPath]} {
+                set topPath $tryPath
+                set found 1
+                break
+            }
+            # Try relative to project_root
+            if {$projectRoot ne ""} {
+                set candidate [file join $projectRoot $tryPath]
+                if {[file exists $candidate]} {
+                    set topPath $candidate
+                    set found 1
+                    if {$verbosity > 1} { puts "  Found top-level file: $candidate" }
+                    break
+                }
+            }
+        }
+    } else {
+        # Entity name mode: resolve against the manifest-driven entity map
+        # first, with the same three-tier matching used for child entities
+        # during the recursive scan: exact, lib-stripped, case-insensitive.
+        if {[dict exists $entityFileMap $top]} {
+            set topPath [dict get $entityFileMap $top]
+            set found 1
+            if {$verbosity > 1} { puts "  Found top-level file via entity map: $topPath" }
+        } else {
+            set simpleName $top
+            if {[string match "*.*" $top]} {
+                set simpleName [lindex [split $top "."] end]
+                if {[dict exists $entityFileMap $simpleName]} {
+                    set topPath [dict get $entityFileMap $simpleName]
+                    set found 1
+                    if {$verbosity > 1} { puts "  Found top-level file via entity map ($simpleName): $topPath" }
+                }
+            }
+            if {!$found} {
+                foreach key [dict keys $entityFileMap] {
+                    if {[string equal -nocase $key $top] || [string equal -nocase $key $simpleName]} {
+                        set topPath [dict get $entityFileMap $key]
+                        set found 1
+                        if {$verbosity > 1} { puts "  Found top-level file via entity map ($key): $topPath" }
+                        break
+                    }
+                }
+            }
+        }
+
+        # Filesystem fallback: probe for a file named after the entity.
+        set extensions [list "" ".vhd" ".vhdl"]
+
+        # Try in project root
+        if {!$found} {
+            foreach ext $extensions {
+                set tryPath "${top}${ext}"
+                if {[file exists $tryPath]} {
+                    set topPath $tryPath
+                    set found 1
+                    break
+                }
+                # Try relative to project_root
+                if {$projectRoot ne ""} {
+                    set candidate [file join $projectRoot $tryPath]
+                    if {[file exists $candidate]} {
+                        set topPath $candidate
+                        set found 1
+                        if {$verbosity > 1} { puts "  Found top-level file: $candidate" }
+                        break
+                    }
+                }
+            }
+        }
+
+        # If not found, try in libraries
+        if {!$found && $libs ne ""} {
+            foreach lib [dict keys $libs] {
+                set libroot [dict get $libs $lib]
+                if {$projectRoot ne "" && [file pathtype $libroot] ne "absolute"} {
+                    set libroot [file join $projectRoot $libroot]
+                }
+                foreach ext $extensions {
+                    set candidate [file join $libroot "${top}${ext}"]
+                    if {[file exists $candidate]} {
+                        set topPath $candidate
+                        set found 1
+                        if {$verbosity > 1} { puts "  Found top-level file in library '$lib': $candidate" }
+                        break
+                    }
+                }
+                if {$found} break
+            }
+        }
+    }
+
+    if {!$found} {
+        if {$isFilePath} {
+            error "project_documenter: cannot locate top-level file '$top' (tried relative to current dir and project_root)"
+        } else {
+            error "project_documenter: cannot locate top-level file matching entity '$top' (tried .vhd, .vhdl extensions in project_root and libraries)"
+        }
+    }
+
     # Parse starting from top and recursively scan instantiated entities
     set allParseDicts [dict create]
     set allEntities [list]

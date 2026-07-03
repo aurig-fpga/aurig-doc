@@ -1,0 +1,10 @@
+project_name: documenter_top_project
+project_root: "."
+top: top_unit
+
+file_sets:
+  rtl:
+    - lib: work
+      src:
+        - "rtl/*.vhd"
+      vhdl_std: "2008"
