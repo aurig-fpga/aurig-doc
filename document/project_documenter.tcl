@@ -104,20 +104,20 @@ proc ::aurig::doc::_strip_lib_prefix {name} {
 # Helper to emit hierarchy tree recursively with collapsible sections (HTML)
 proc ::aurig::doc::_emit_hierarchy_tree_collapsible {entity hierarchy fmt emitted path} {
     upvar $emitted seen
-    
+
     # Avoid infinite loops on SAME PATH only (check if entity is in current path)
-    if {[lsearch -exact $path $entity] >= 0} { 
+    if {[lsearch -exact $path $entity] >= 0} {
         return "<li><a href='[::aurig::doc::_slug [::aurig::doc::_strip_lib_prefix $entity]].$fmt'>$entity</a> <i>(recursive)</i></li>"
     }
-    
+
     # Add to current path
     lappend path $entity
-    
+
     set buf ""
     # Strip library prefix for slug/filename
     set simpleName [::aurig::doc::_strip_lib_prefix $entity]
     set slug [::aurig::doc::_slug $simpleName]
-    
+
     # Try to find children with multiple key variations
     set children {}
     if {[dict exists $hierarchy $entity]} {
@@ -134,7 +134,7 @@ proc ::aurig::doc::_emit_hierarchy_tree_collapsible {entity hierarchy fmt emitte
             }
         }
     }
-    
+
     if {[llength $children] > 0} {
         # Has children - make collapsible
         append buf "<li><span class='collapsible has-children' onclick='toggleCollapse(this)'><a href='$slug.$fmt'>$entity</a></span>"
@@ -153,9 +153,9 @@ proc ::aurig::doc::_emit_hierarchy_tree_collapsible {entity hierarchy fmt emitte
 # Helper to emit hierarchy tree recursively
 proc ::aurig::doc::_emit_hierarchy_tree {entity hierarchy fmt emitted path} {
     upvar $emitted seen
-    
+
     # Avoid infinite loops on SAME PATH only
-    if {[lsearch -exact $path $entity] >= 0} { 
+    if {[lsearch -exact $path $entity] >= 0} {
         set simpleName [::aurig::doc::_strip_lib_prefix $entity]
         set slug [::aurig::doc::_slug $simpleName]
         if {$fmt eq "html"} {
@@ -164,15 +164,15 @@ proc ::aurig::doc::_emit_hierarchy_tree {entity hierarchy fmt emitted path} {
             return "- \[$entity\]($slug.$fmt) *(recursive)*\n"
         }
     }
-    
+
     # Add to current path
     lappend path $entity
-    
+
     set buf ""
     # Strip library prefix for slug/filename
     set simpleName [::aurig::doc::_strip_lib_prefix $entity]
     set slug [::aurig::doc::_slug $simpleName]
-    
+
     # Try to find children with multiple key variations
     set children {}
     if {[dict exists $hierarchy $entity]} {
@@ -189,7 +189,7 @@ proc ::aurig::doc::_emit_hierarchy_tree {entity hierarchy fmt emitted path} {
             }
         }
     }
-    
+
     if {$fmt eq "html"} {
         append buf "<li><a href='$slug.$fmt'>$entity</a>"
         if {[llength $children] > 0} {
@@ -233,7 +233,7 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
     set outFile [file join $outdir "files.html"]
     set fp [open $outFile w]
     fconfigure $fp -translation lf -encoding utf-8
-    
+
     puts $fp "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>File List</title>"
     puts $fp "<style>@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');"
     puts $fp "@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');"
@@ -255,11 +255,11 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
     puts $fp ".footer a{color:#942c13;font-weight:500;text-decoration:none}"
     puts $fp ".footer a:hover{text-decoration:underline}"
     puts $fp "</style></head><body>"
-    
+
     puts $fp "<div style='margin-bottom:20px;padding:10px;background:#f0f0f0;border-radius:4px'>"
     puts $fp "<a href='index.html' style='margin-right:15px'>Home</a>"
     puts $fp "</div>"
-    
+
     puts $fp "<h1>Project Files</h1>"
     puts $fp "<p>Filter files by type:</p>"
     puts $fp "<div class='filter-buttons'>"
@@ -268,9 +268,9 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
     puts $fp "<button class='filter-btn' onclick='filterFiles(\"package\")'>Packages</button>"
     puts $fp "<button class='filter-btn' onclick='filterFiles(\"other\")'>Other</button>"
     puts $fp "</div>"
-    
+
     puts $fp "<table id='fileTable'><thead><tr><th>File Name</th><th>Type</th><th>Contains</th><th>Library</th><th>Actions</th></tr></thead><tbody>"
-    
+
     # Process all files
     dict for {filepath fileInfo} $allFiles {
         set fullpath [dict get $fileInfo fullpath]
@@ -279,12 +279,12 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
         if {[dict exists $fileInfo lib]} {
             set lib [dict get $fileInfo lib]
         }
-        
+
         # Determine file type and contents
         set fileType "other"
         set contents ""
         set contentLinks [list]
-        
+
         # Check if this file contains entities
         set hasEntity 0
         dict for {entity entityFile} $entityToFile {
@@ -294,7 +294,7 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
                 lappend contentLinks "<a href='$entitySlug.html'>$entity</a>"
             }
         }
-        
+
         # Check if this file contains packages
         set hasPackage 0
         dict for {pkg pkgFile} $packageToFile {
@@ -304,19 +304,19 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
                 lappend contentLinks "<a href='pkg_$pkgSlug.html'>$pkg</a>"
             }
         }
-        
+
         if {$hasEntity} { set fileType "entity" }
         if {$hasPackage} { set fileType "package" }
-        
+
         set contents [join $contentLinks ", "]
-        
+
         # Get source viewer link
         set viewerLink ""
         if {[dict exists $sourceViewerMap $fullpath]} {
             set viewerPage [dict get $sourceViewerMap $fullpath]
             set viewerLink "<a href='$viewerPage'>View Source</a>"
         }
-        
+
         puts $fp "<tr class='file-row' data-type='$fileType'>"
         puts $fp "<td><strong>$fileName</strong></td>"
         puts $fp "<td>$fileType</td>"
@@ -325,11 +325,11 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
         puts $fp "<td>$viewerLink</td>"
         puts $fp "</tr>"
     }
-    
+
     puts $fp "</tbody></table>"
-    
+
     puts $fp [::aurig::doc::_generate_footer $includeLogo]
-    
+
     puts $fp "<script>"
     puts $fp "function filterFiles(type) {"
     puts $fp "  var rows = document.querySelectorAll('.file-row');"
@@ -346,7 +346,7 @@ proc ::aurig::doc::_emit_file_list {outdir allFiles entityToFile packageToFile s
     puts $fp "}"
     puts $fp "</script>"
     puts $fp "</body></html>"
-    
+
     close $fp
 }
 
@@ -396,12 +396,12 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
         append buf "</script>"
         append buf "</head><body>"
         append buf "<h1>$title</h1>"
-        
+
         # Project metadata section
         if {[dict size $configData] > 0} {
             append buf "<div class='metadata'><h3>Project Information</h3>"
             append buf "<table>"
-            
+
             # FPGA Device (vendor + family + part)
             if {[dict exists $configData device_vendor] || [dict exists $configData device_family] || [dict exists $configData device_part]} {
                 set fpga_display ""
@@ -428,7 +428,7 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
             } elseif {[dict exists $configData fpga_family]} {
                 append buf "<tr><td><strong>FPGA Family</strong></td><td>[dict get $configData fpga_family]</td></tr>"
             }
-            
+
             # Tool information
             if {[dict exists $configData tool_kind] || [dict exists $configData tool_version]} {
                 set tool_display ""
@@ -449,7 +449,7 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
                 # Fallback for simple tool string
                 append buf "<tr><td><strong>Tool</strong></td><td>[dict get $configData tool]</td></tr>"
             }
-            
+
             # Constraint files
             if {[dict exists $configData constraints]} {
                 set constraints [dict get $configData constraints]
@@ -461,13 +461,13 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
                     append buf "</td></tr>"
                 }
             }
-            
+
             # Libraries and source folders from file_sets
             if {[dict exists $configData filesets]} {
                 append buf "<tr><td><strong>Libraries & Sources</strong></td><td>"
                 append buf "<table style='width:100%;border:none;margin:0'>"
                 append buf "<tr style='background:#e8f4f8'><th style='width:25%;text-align:left;border:1px solid #ddd'>Library</th><th style='text-align:left;border:1px solid #ddd'>Source Folders</th></tr>"
-                
+
                 # Parse file_sets structure: {fileset_name: [{lib: ..., src: [...]}, ...]}
                 dict for {fileset_name entries} [dict get $configData filesets] {
                     foreach entry $entries {
@@ -478,7 +478,7 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
                                 set dir [file dirname $f]
                                 dict set dirs $dir 1
                             }
-                            
+
                             append buf "<tr><td style='border:1px solid #ddd'><strong>$lib</strong></td><td style='border:1px solid #ddd'>"
                             set first 1
                             foreach dir [lsort [dict keys $dirs]] {
@@ -492,35 +492,35 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
                 }
                 append buf "</table></td></tr>"
             }
-            
+
             # Top entity
             if {$topEntity ne ""} {
                 append buf "<tr><td><strong>Top Entity</strong></td><td><strong>$topEntity</strong></td></tr>"
             }
-            
+
             append buf "</table></div>"
         } else {
             if {$topEntity ne ""} {
                 append buf "<p>Top: <strong>$topEntity</strong></p>"
             }
         }
-        
+
         append buf "<h2>Hierarchy</h2>"
         append buf "<p><a href='files.html' style='font-size:0.9em'>&rarr; View complete file list</a></p>"
         append buf "<ul>"
-        
+
         # Emit collapsible tree starting from top entity
         array set emitted {}
         append buf [::aurig::doc::_emit_hierarchy_tree_collapsible $topEntity $hierarchy $fmt emitted [list]]
-        
+
         # Entities table with source file and description
         append buf "</ul><h2>Entities</h2>"
         append buf "<table><tr><th>Entity Name</th><th>Source File</th><th>Description</th></tr>"
-        
+
         foreach e $entities {
             set es [::aurig::doc::_slug $e]
             append buf "<tr><td><a href='$es.$fmt'>$e</a></td>"
-            
+
             # Get source file and description from mappings
             set sourceFile ""
             set description ""
@@ -530,25 +530,25 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
             if {[dict exists $entityToDesc $e]} {
                 set description [dict get $entityToDesc $e]
             }
-            
+
             if {$sourceFile ne ""} {
                 set file_url "file:///[string map {{ } %20} [string map {\\ /} $sourceFile]]"
                 append buf "<td><a href='$file_url' target='_blank'>[file tail $sourceFile]</a></td>"
             } else {
                 append buf "<td></td>"
             }
-            
+
             append buf "<td>$description</td></tr>"
         }
         append buf "</table>"
-        
+
         # Packages table with source file and description
         append buf "<h2>Packages</h2>"
         append buf "<table><tr><th>Package Name</th><th>Source File</th><th>Description</th></tr>"
-        foreach p $packages { 
+        foreach p $packages {
             set ps [::aurig::doc::_slug $p]
             append buf "<tr><td><a href='pkg_$ps.$fmt'>$p</a></td>"
-            
+
             # Get source file and description from mappings
             set sourceFile ""
             set description ""
@@ -558,29 +558,29 @@ proc ::aurig::doc::_emit_index {outdir fmt projectName topEntity hierarchy entit
             if {[dict exists $packageToDesc $p]} {
                 set description [dict get $packageToDesc $p]
             }
-            
+
             if {$sourceFile ne ""} {
                 set file_url "file:///[string map {{ } %20} [string map {\\ /} $sourceFile]]"
                 append buf "<td><a href='$file_url' target='_blank'>[file tail $sourceFile]</a></td>"
             } else {
                 append buf "<td></td>"
             }
-            
+
             append buf "<td>$description</td></tr>"
         }
         append buf "</table>"
-        
+
         append buf [::aurig::doc::_generate_footer $includeLogo]
-        
+
         append buf "</body></html>"
         ::aurig::doc::_write_file $idx $buf
     } else {
         set buf "# $title\n\nTop: **$topEntity**\n\n## Hierarchy\n"
-        
+
         # Emit tree starting from top entity
         array set emitted {}
         append buf [::aurig::doc::_emit_hierarchy_tree $topEntity $hierarchy $fmt emitted [list]]
-        
+
         append buf "\n## Entities\n"
         foreach e $entities { set es [::aurig::doc::_slug $e]; append buf "- \[$e\]($es.$fmt)\n" }
         append buf "\n## Packages\n"
@@ -594,25 +594,25 @@ proc ::aurig::doc::_emit_source_viewer {sourceFile outdir {includeLogo 0}} {
     set fileName [file tail $sourceFile]
     set slug [::aurig::doc::_slug $fileName]
     set outFile [file join $outdir "src_${slug}.html"]
-    
+
     # Read the source file
     if {![file exists $sourceFile]} {
         return ""
     }
-    
+
     set fp [open $sourceFile r]
     fconfigure $fp -encoding utf-8
     set sourceCode [read $fp]
     close $fp
-    
+
     # Escape HTML special characters
     set sourceCode [string map {& &amp; < &lt; > &gt; ' &#39;} $sourceCode]
     set sourceCode [string map [list \" &quot;] $sourceCode]
-    
+
     # Generate HTML with CodeMirror
     set out [open $outFile w]
     fconfigure $out -translation lf -encoding utf-8
-    
+
     puts $out "<!DOCTYPE html>"
     puts $out "<html><head><meta charset=\"utf-8\"><title>$fileName - Source Code</title>"
     puts $out "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css\">"
@@ -644,10 +644,10 @@ proc ::aurig::doc::_emit_source_viewer {sourceFile outdir {includeLogo 0}} {
     puts $out "<div class='file-info'>File: <code>$sourceFile</code></div>"
     puts $out "<textarea id='code'>$sourceCode</textarea>"
     puts $out "</div>"
-    
+
     set footer [::aurig::doc::_generate_footer $includeLogo]
     puts $out $footer
-    
+
     puts $out "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js\"></script>"
     puts $out "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/vhdl/vhdl.min.js\"></script>"
     puts $out "<script>"
@@ -661,7 +661,7 @@ proc ::aurig::doc::_emit_source_viewer {sourceFile outdir {includeLogo 0}} {
     puts $out "});"
     puts $out "</script>"
     puts $out "</body></html>"
-    
+
     close $out
     return "src_${slug}.html"
 }
@@ -673,21 +673,21 @@ proc ::aurig::doc::_emit_entity_page {parseDict outdir fmt entityName {sourceVie
     if {$fmt eq "html"} {
         # Generate the standard HTML doc
         ::aurig::doc::_emit_html_doc $parseDict $out stdout $sourceViewerMap $allHierarchy $reverseHierarchy $entityName
-        
+
         # Read it back, add navigation and footer, and rewrite
         set fp [open $out r]; fconfigure $fp -encoding utf-8; set content [read $fp]; close $fp
-        
+
         # Insert navigation after <body> tag
         set nav "<div style='margin-bottom:20px;padding:10px;background:#f0f0f0;border-radius:4px'>"
         append nav "<a href='index.html' style='margin-right:15px'>🏠 Home</a>"
         append nav "</div>"
-        
+
         set content [string map [list "<body>" "<body>$nav"] $content]
-        
+
         # Insert footer before </body>
         set footer [::aurig::doc::_generate_footer $includeLogo]
         set content [string map [list "</body>" "$footer</body>"] $content]
-        
+
         set fp [open $out w]; fconfigure $fp -translation lf -encoding utf-8; puts $fp $content; close $fp
     } else {
         # Generate the standard MD doc, then prepend project navigation.
@@ -713,7 +713,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
         puts $fp "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>$pkgName</title><style>@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');body{font-family:'Oswald',serif;margin:24px;color:#2f2a25} table{border-collapse:collapse;margin:12px 0} th,td{border:1px solid #ddd;padding:6px 10px} th{background:#f7f7f7;color:#2f2a25;font-weight:600} p,td{font-family:'Roboto',serif;line-height:1.6} a{color:#942c13;text-decoration:none} a:hover{text-decoration:underline} .footer{margin-top:40px;padding-top:20px;border-top:2px solid #ddd;text-align:center;color:#666;font-size:0.9em} .footer img{max-width:250px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto} .footer a{color:#942c13;font-weight:500;text-decoration:none} .footer a:hover{text-decoration:underline}</style></head><body>"
         puts $fp "<div style='margin-bottom:20px;padding:10px;background:#f0f0f0;border-radius:4px'><a href='index.html' style='margin-right:15px'>🏠 Home</a></div>"
         puts $fp "<h1>Package: $pkgName</h1>"
-        
+
         # Add source file link if available
         if {[dict exists $parseDict meta file]} {
             set source_file [dict get $parseDict meta file]
@@ -721,7 +721,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
             set file_url "file:///[string map {{ } %20} [string map {\\ /} $source_file]]"
             puts $fp "<p><strong>Source File:</strong> <a href='$file_url' target='_blank'>$source_file</a></p>"
         }
-        
+
         # Separate functions, procedures from other declarations
         set decls [::aurig::core::analyze::q_pkg_decls $parseDict $pkgDict]
         set functions {}
@@ -737,7 +737,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 lappend otherDecls $d
             }
         }
-        
+
         # Emit non-function declarations
         if {[llength $otherDecls]} {
             puts $fp "<h2>Declarations</h2><table><tr><th>Kind</th><th>Name</th><th>Type</th><th>Init</th><th>Comment</th></tr>"
@@ -751,7 +751,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
             }
             puts $fp "</table>"
         }
-        
+
         # Emit functions in separate table
         if {[llength $functions]} {
             puts $fp "<h2>Functions</h2><table><tr><th>Name</th><th>Parameters</th><th>Return</th><th>Comment</th></tr>"
@@ -760,7 +760,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 set comment [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
                 set returnType [expr {[dict exists $d return] ? [dict get $d return] : ""}]
                 set params [expr {[dict exists $d params] ? [dict get $d params] : ""}]
-                
+
                 # Format parameters: one per line
                 set formattedParams ""
                 if {$params ne ""} {
@@ -774,12 +774,12 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                     }
                     set formattedParams [join $trimmedParams "<br>"]
                 }
-                
+
                 puts $fp "<tr><td>$name</td><td>$formattedParams</td><td>$returnType</td><td>$comment</td></tr>"
             }
             puts $fp "</table>"
         }
-        
+
         # Emit procedures in separate table
         if {[llength $procedures]} {
             puts $fp "<h2>Procedures</h2><table><tr><th>Name</th><th>Parameters</th><th>Comment</th></tr>"
@@ -787,7 +787,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 set name [expr {[dict exists $d name] ? [dict get $d name] : ""}]
                 set comment [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
                 set params [expr {[dict exists $d params] ? [dict get $d params] : ""}]
-                
+
                 # Format parameters: one per line
                 set formattedParams ""
                 if {$params ne ""} {
@@ -801,20 +801,20 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                     }
                     set formattedParams [join $trimmedParams "<br>"]
                 }
-                
+
                 puts $fp "<tr><td>$name</td><td>$formattedParams</td><td>$comment</td></tr>"
             }
             puts $fp "</table>"
         }
-        
+
         # Add footer
         puts $fp [::aurig::doc::_generate_footer $includeLogo]
-        
+
         puts $fp "</body></html>"; close $fp
     } else {
         set fp [open $out w]; fconfigure $fp -translation lf
         puts $fp "# Package: $pkgName\n"
-        
+
         # Separate functions, procedures from other declarations
         set decls [::aurig::core::analyze::q_pkg_decls $parseDict $pkgDict]
         set functions {}
@@ -830,7 +830,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 lappend otherDecls $d
             }
         }
-        
+
         # Emit non-function declarations
         if {[llength $otherDecls]} {
             puts $fp "\n## Declarations\n| Kind | Name | Type | Init | Comment |\n|---|---|---|---|---|"
@@ -843,7 +843,7 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 puts $fp "| $kind | $name | $type | $init | $comment |"
             }
         }
-        
+
         # Emit functions in separate table
         if {[llength $functions]} {
             puts $fp "\n## Functions\n| Name | Parameters | Return | Comment |\n|---|---|---|---|"
@@ -852,11 +852,11 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 set comment [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
                 set returnType [expr {[dict exists $d return] ? [dict get $d return] : ""}]
                 set params [expr {[dict exists $d params] ? [dict get $d params] : ""}]
-                
+
                 puts $fp "| $name | $params | $returnType | $comment |"
             }
         }
-        
+
         # Emit procedures in separate table
         if {[llength $procedures]} {
             puts $fp "\n## Procedures\n| Name | Parameters | Comment |\n|---|---|---|"
@@ -864,11 +864,11 @@ proc ::aurig::doc::_emit_package_page {parseDict outdir fmt pkgDict {includeLogo
                 set name [expr {[dict exists $d name] ? [dict get $d name] : ""}]
                 set comment [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
                 set params [expr {[dict exists $d params] ? [dict get $d params] : ""}]
-                
+
                 puts $fp "| $name | $params | $comment |"
             }
         }
-        
+
         close $fp
     }
 }
@@ -1006,9 +1006,9 @@ proc ::aurig::doc::project_documenter {args} {
         set projectRoot [expr {[dict exists $Y project_root] ? [dict get $Y project_root] : ""}]
         set libs [expr {[dict exists $Y external_libraries] ? [dict get $Y external_libraries] \
                       : ([dict exists $Y libraries] ? [dict get $Y libraries] : {})}]
-        
+
         # Extract additional metadata for documentation
-        
+
         # Extract device info from device section
         if {[dict exists $Y device]} {
             set device_dict [dict get $Y device]
@@ -1022,11 +1022,11 @@ proc ::aurig::doc::project_documenter {args} {
                 dict set configData device_part $part
             }
         }
-        
+
         # Fallback to old fpga_device/fpga_family if present
         if {[dict exists $Y fpga_device]} { dict set configData fpga_device [dict get $Y fpga_device] }
         if {[dict exists $Y fpga_family]} { dict set configData fpga_family [dict get $Y fpga_family] }
-        
+
         # Extract tool info - handle nested dict structure (e.g., tool: {synth: {kind: quartus, version: 24.1}})
         if {[dict exists $Y tool]} {
             set tool_dict [dict get $Y tool]
@@ -1045,7 +1045,7 @@ proc ::aurig::doc::project_documenter {args} {
             }
         }
         if {[dict exists $Y tool_version]} { dict set configData tool_version [dict get $Y tool_version] }
-        
+
         # Extract constraints from board section
         set constraints [list]
         if {[dict exists $Y board]} {
@@ -1061,7 +1061,7 @@ proc ::aurig::doc::project_documenter {args} {
                 }
             }
         }
-        
+
         # Extract additional constraints from quartus section
         if {[dict exists $Y quartus]} {
             set quartus_dict [dict get $Y quartus]
@@ -1071,12 +1071,12 @@ proc ::aurig::doc::project_documenter {args} {
                 }
             }
         }
-        
+
         if {[llength $constraints] > 0} {
             dict set configData constraints $constraints
         }
-        
-        if {[dict exists $Y file_sets]} { 
+
+        if {[dict exists $Y file_sets]} {
             set filesets [dict create]
             dict for {lib files} [dict get $Y file_sets] {
                 dict set filesets $lib $files
@@ -1090,56 +1090,56 @@ proc ::aurig::doc::project_documenter {args} {
         set projectRoot [expr {[dict exists $INI config workdir] ? [dict get $INI config workdir] : ""}]
         set libs [expr {[dict exists $INI external_libraries] ? [dict get $INI external_libraries] \
                       : ([dict exists $INI libraries] ? [dict get $INI libraries] : {})}]
-        
+
         # Extract additional metadata for documentation
         if {[dict exists $INI config fpga_device]} { dict set configData fpga_device [dict get $INI config fpga_device] }
         if {[dict exists $INI config fpga_family]} { dict set configData fpga_family [dict get $INI config fpga_family] }
         if {[dict exists $INI config tool]} { dict set configData tool [dict get $INI config tool] }
         if {[dict exists $INI config tool_version]} { dict set configData tool_version [dict get $INI config tool_version] }
     }
-    
+
     # Make project_root absolute if it's relative (relative to config file location)
     if {$projectRoot ne "" && [file pathtype $projectRoot] ne "absolute"} {
         set projectRoot [file normalize [file join $configDir $projectRoot]]
     }
-    
+
     # If no top specified, scan all files from file_sets
     if {$top eq ""} {
         if {$verbosity > 0} { puts "No top-level specified, scanning all files from file_sets..." }
-        
+
         # Collect all files from project
         set allFiles [::aurig::core::util::collect_project_files -from $config -format $cfgFormat]
-        
+
         # Aggregate all entities and packages across all files
         set allEntities {}
         set allPackages {}
         set allHierarchy {}
         set allParseDicts {}
-        
+
         # Build entity/package to source file mappings
         set entityToFile [dict create]
         set entityToDesc [dict create]
         set packageToFile [dict create]
         set packageToDesc [dict create]
-        
+
         set fileCount 0
         dict for {filekey fileinfo} $allFiles {
             if {[dict get $fileinfo type] ne "vhdl"} continue
-            
+
             set filepath [dict get $fileinfo fullpath]
             incr fileCount
             if {$verbosity > 1} { puts "  Parsing: [file tail $filepath]" }
-            
+
             if {[catch {
                 set parseDict [::aurig::core::analyze::vhdlscan -in $filepath -verbosity 0]
                 dict set allParseDicts $filepath $parseDict
-                
+
                 # Get file-level description if available
                 set fileDesc ""
                 if {[dict exists $parseDict metadata description]} {
                     set fileDesc [dict get $parseDict metadata description]
                 }
-                
+
                 # Collect entities
                 set entities [::aurig::core::analyze::q_entity_names $parseDict]
                 foreach e $entities {
@@ -1148,31 +1148,31 @@ proc ::aurig::doc::project_documenter {args} {
                     if {$fileDesc ne ""} {
                         dict set entityToDesc $e $fileDesc
                     }
-                    
+
                     if {[lsearch -exact $allEntities $e] < 0} {
                         lappend allEntities $e
                         # Defer page emission until after source viewers are created
                     }
                 }
-                
+
                 # Collect packages
                 foreach p [::aurig::core::analyze::q_packages $parseDict] {
                     if {[dict exists $p name]} {
                         set pname [dict get $p name]
-                        
+
                         # Store package → file mapping
                         dict set packageToFile $pname $filepath
                         if {$fileDesc ne ""} {
                             dict set packageToDesc $pname $fileDesc
                         }
-                        
+
                         if {[lsearch -exact $allPackages $pname] < 0} {
                             lappend allPackages $pname
                             # Defer page emission until after source viewers are created
                         }
                     }
                 }
-                
+
                 # Build hierarchy
                 set H [::aurig::doc::_build_hierarchy $parseDict]
                 dict for {parent children} $H {
@@ -1193,12 +1193,12 @@ proc ::aurig::doc::project_documenter {args} {
                 if {$verbosity > 0} { puts "  WARNING: Failed to parse $filepath: $err" }
             }
         }
-        
-        if {$verbosity > 0} { 
+
+        if {$verbosity > 0} {
             puts "Processed $fileCount VHDL files"
             puts "Found [llength $allEntities] entities, [llength $allPackages] packages"
         }
-        
+
         # Generate source code viewer pages for all parsed files
         if {$verbosity > 0} { puts "Generating source code viewer pages..." }
         set sourceViewerMap [dict create]
@@ -1212,10 +1212,10 @@ proc ::aurig::doc::project_documenter {args} {
             }
         }
         if {$verbosity > 0} { puts "Generated [dict size $sourceViewerMap] source viewer pages" }
-        
+
         # Build reverse hierarchy for "who uses this entity" display
         set reverseHierarchy [::aurig::doc::_build_reverse_hierarchy $allHierarchy]
-        
+
         # Now emit entity and package pages with source viewer links
         if {$verbosity > 0} { puts "Generating entity and package documentation pages..." }
         dict for {filepath parseDict} $allParseDicts {
@@ -1233,7 +1233,7 @@ proc ::aurig::doc::project_documenter {args} {
                 }
             }
         }
-        
+
         # Collect missing entities for report
         set missingEntities [list]
         dict for {parent children} $allHierarchy {
@@ -1252,19 +1252,19 @@ proc ::aurig::doc::project_documenter {args} {
             }
         }
         set missingEntities [lsort -unique $missingEntities]
-        
+
         # Emit index with all entities and packages
         set topEntity [expr {[llength $allEntities] > 0 ? [lindex $allEntities 0] : ""}]
         ::aurig::doc::_emit_index $outdir $fmt $projectName $topEntity $allHierarchy $allEntities $allPackages $configData $entityToFile $entityToDesc $packageToFile $packageToDesc $includeLogo
-        
+
         # Generate file list page
         ::aurig::doc::_emit_file_list $outdir $allFiles $entityToFile $packageToFile $sourceViewerMap $includeLogo
-        
+
         # Generate text report (flat scan mode)
         set reportFile [file join $outdir "documentation_report.txt"]
         set fp [open $reportFile w]
         fconfigure $fp -translation lf
-        
+
         puts $fp "================================================================"
         puts $fp "  DOCUMENTATION GENERATION REPORT (Flat Scan Mode)"
         puts $fp "================================================================"
@@ -1272,13 +1272,13 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "Project: $projectName"
         puts $fp "Mode: All files scanned (no top entity specified)"
         puts $fp ""
-        
+
         puts $fp "----------------------------------------------------------------"
         puts $fp "  FILES ANALYZED"
         puts $fp "----------------------------------------------------------------"
         puts $fp "Total VHDL files scanned: $fileCount"
         puts $fp ""
-        
+
         puts $fp "----------------------------------------------------------------"
         puts $fp "  ENTITIES DOCUMENTED"
         puts $fp "----------------------------------------------------------------"
@@ -1292,7 +1292,7 @@ proc ::aurig::doc::project_documenter {args} {
             puts $fp "  - $e (from $srcFile)"
         }
         puts $fp ""
-        
+
         puts $fp "----------------------------------------------------------------"
         puts $fp "  PACKAGES DOCUMENTED"
         puts $fp "----------------------------------------------------------------"
@@ -1306,7 +1306,7 @@ proc ::aurig::doc::project_documenter {args} {
             puts $fp "  - $p (from $srcFile)"
         }
         puts $fp ""
-        
+
         if {[llength $missingEntities] > 0} {
             puts $fp "----------------------------------------------------------------"
             puts $fp "  MISSING ENTITIES (Instantiated but not documented)"
@@ -1321,7 +1321,7 @@ proc ::aurig::doc::project_documenter {args} {
             }
             puts $fp ""
         }
-        
+
         puts $fp "----------------------------------------------------------------"
         puts $fp "  SUMMARY"
         puts $fp "----------------------------------------------------------------"
@@ -1334,10 +1334,10 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "Index page:            [file join $outdir index.$fmt]"
         puts $fp "This report:           $reportFile"
         puts $fp "================================================================"
-        
+
         close $fp
-        
-        if {$verbosity > 0} { 
+
+        if {$verbosity > 0} {
             puts "project_documenter: wrote docs to $outdir (format=$fmt)"
             puts "project_documenter: wrote report to $reportFile"
             if {[llength $missingEntities] > 0} {
@@ -1471,7 +1471,7 @@ proc ::aurig::doc::project_documenter {args} {
     # Resolve top source path if relative
     set topPath $top
     set found 0
-    
+
     # Determine if 'top' is a file path (contains / or \) or just an entity name
     set isFilePath [expr {[string match "*/*" $top] || [string match "*\\*" $top]}]
 
@@ -1591,13 +1591,13 @@ proc ::aurig::doc::project_documenter {args} {
     set allHierarchy [dict create]
     set toScan [list $topPath]
     set scanned [dict create]
-    
+
     # Build entity/package to source file mappings
     set entityToFile [dict create]
     set entityToDesc [dict create]
     set packageToFile [dict create]
     set packageToDesc [dict create]
-    
+
     # Also queue all package files for scanning
     foreach pkgFile $packageFiles {
         if {[lsearch -exact $toScan $pkgFile] < 0} {
@@ -1605,27 +1605,27 @@ proc ::aurig::doc::project_documenter {args} {
             if {$verbosity > 2} { puts "  Queued package file: [file tail $pkgFile]" }
         }
     }
-    
+
     while {[llength $toScan] > 0} {
         set filepath [lindex $toScan 0]
         set toScan [lrange $toScan 1 end]
-        
+
         # Skip if already scanned
         if {[dict exists $scanned $filepath]} continue
         dict set scanned $filepath 1
-        
+
         if {$verbosity > 1} { puts "  Parsing: [file tail $filepath]" }
-        
+
         if {[catch {
             set parseDict [::aurig::core::analyze::vhdlscan -in $filepath -verbosity 0]
             dict set allParseDicts $filepath $parseDict
-            
+
             # Get file-level description if available
             set fileDesc ""
             if {[dict exists $parseDict metadata description]} {
                 set fileDesc [dict get $parseDict metadata description]
             }
-            
+
             # Collect entities
             foreach e [::aurig::core::analyze::q_entity_names $parseDict] {
                 # Store entity → file mapping
@@ -1633,36 +1633,36 @@ proc ::aurig::doc::project_documenter {args} {
                 if {$fileDesc ne ""} {
                     dict set entityToDesc $e $fileDesc
                 }
-                
+
                 if {[lsearch -exact $allEntities $e] < 0} {
                     lappend allEntities $e
                     # Defer page emission until after source viewers are created
                 }
             }
-            
+
             # Collect packages
             foreach p [::aurig::core::analyze::q_packages $parseDict] {
                 if {[dict exists $p name]} {
                     set pname [dict get $p name]
-                    
+
                     # Store package → file mapping
                     dict set packageToFile $pname $filepath
                     if {$fileDesc ne ""} {
                         dict set packageToDesc $pname $fileDesc
                     }
-                    
+
                     if {[lsearch -exact $allPackages $pname] < 0} {
                         lappend allPackages $pname
                         # Defer page emission until after source viewers are created
                     }
                 }
             }
-            
+
             # Build hierarchy and find new entities to scan
             set H [::aurig::doc::_build_hierarchy $parseDict]
             dict for {parent children} $H {
                 if {$verbosity > 2} { puts "    Hierarchy: $parent -> [join $children {, }]" }
-                
+
                 if {![dict exists $allHierarchy $parent]} {
                     dict set allHierarchy $parent $children
                 } else {
@@ -1675,14 +1675,14 @@ proc ::aurig::doc::project_documenter {args} {
                     }
                     dict set allHierarchy $parent $existing
                 }
-                
+
                 # Queue children for scanning
                 foreach child $children {
                     # Try to find the file for this child entity
                     set childFile ""
-                    
+
                     if {$verbosity > 2} { puts "    Looking for child entity: $child" }
-                    
+
                     # Try exact match first
                     if {[dict exists $entityFileMap $child]} {
                         set childFile [dict get $entityFileMap $child]
@@ -1697,7 +1697,7 @@ proc ::aurig::doc::project_documenter {args} {
                                 if {$verbosity > 2} { puts "      Found via simple name ($simpleName): [file tail $childFile]" }
                             }
                         }
-                        
+
                         # Try case-insensitive match if still not found
                         if {$childFile eq ""} {
                             foreach key [dict keys $entityFileMap] {
@@ -1709,7 +1709,7 @@ proc ::aurig::doc::project_documenter {args} {
                             }
                         }
                     }
-                    
+
                     if {$childFile eq ""} {
                         if {$verbosity > 1} { puts "      WARNING: Could not find file for entity: $child" }
                     } else {
@@ -1726,8 +1726,8 @@ proc ::aurig::doc::project_documenter {args} {
             if {$verbosity > 0} { puts "  WARNING: Failed to parse $filepath: $err" }
         }
     }
-    
-    if {$verbosity > 0} { 
+
+    if {$verbosity > 0} {
         puts "Processed [dict size $scanned] VHDL files"
         puts "Found [llength $allEntities] entities, [llength $allPackages] packages"
     }
@@ -1783,7 +1783,7 @@ proc ::aurig::doc::project_documenter {args} {
         }
     }
     set missingEntities [lsort -unique $missingEntities]
-    
+
     # Emit index with complete hierarchy
     set topEntity [lindex $allEntities 0]
     ::aurig::doc::_emit_index $outdir $fmt $projectName $topEntity $allHierarchy $allEntities $allPackages $configData $entityToFile $entityToDesc $packageToFile $packageToDesc $includeLogo
@@ -1799,7 +1799,7 @@ proc ::aurig::doc::project_documenter {args} {
             dict set fileInfoDict $filepath lib "futurama_lib"
         }
     }
-    
+
     # Generate file list page
     ::aurig::doc::_emit_file_list $outdir $fileInfoDict $entityToFile $packageToFile $sourceViewerMap $includeLogo
 
@@ -1807,7 +1807,7 @@ proc ::aurig::doc::project_documenter {args} {
     set reportFile [file join $outdir "documentation_report.txt"]
     set fp [open $reportFile w]
     fconfigure $fp -translation lf
-    
+
     puts $fp "================================================================"
     puts $fp "  DOCUMENTATION GENERATION REPORT"
     puts $fp "================================================================"
@@ -1817,7 +1817,7 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "Top Entity: $topEntity"
     }
     puts $fp ""
-    
+
     puts $fp "----------------------------------------------------------------"
     puts $fp "  FILES ANALYZED"
     puts $fp "----------------------------------------------------------------"
@@ -1832,7 +1832,7 @@ proc ::aurig::doc::project_documenter {args} {
         }
     }
     puts $fp ""
-    
+
     puts $fp "----------------------------------------------------------------"
     puts $fp "  ENTITIES DOCUMENTED"
     puts $fp "----------------------------------------------------------------"
@@ -1846,7 +1846,7 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "  - $e (from $srcFile)"
     }
     puts $fp ""
-    
+
     puts $fp "----------------------------------------------------------------"
     puts $fp "  PACKAGES DOCUMENTED"
     puts $fp "----------------------------------------------------------------"
@@ -1860,7 +1860,7 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "  - $p (from $srcFile)"
     }
     puts $fp ""
-    
+
     if {[llength $missingEntities] > 0} {
         puts $fp "----------------------------------------------------------------"
         puts $fp "  MISSING ENTITIES (Instantiated but not documented)"
@@ -1887,7 +1887,7 @@ proc ::aurig::doc::project_documenter {args} {
         puts $fp "All entities in the hierarchy were successfully documented."
         puts $fp ""
     }
-    
+
     puts $fp "----------------------------------------------------------------"
     puts $fp "  SUMMARY"
     puts $fp "----------------------------------------------------------------"
@@ -1900,10 +1900,10 @@ proc ::aurig::doc::project_documenter {args} {
     puts $fp "Index page:            [file join $outdir index.$fmt]"
     puts $fp "This report:           $reportFile"
     puts $fp "================================================================"
-    
+
     close $fp
-    
-    if {$verbosity > 0} { 
+
+    if {$verbosity > 0} {
         puts "project_documenter: wrote docs to $outdir (format=$fmt)"
         puts "project_documenter: wrote report to $reportFile"
         if {[llength $missingEntities] > 0} {
