@@ -47,15 +47,15 @@ proc ::aurig::doc::documenter {args} {
 	while {$i < [llength $args]} {
 		set switch [lindex $args $i]
 		incr i
-		
+
 		if {$i >= [llength $args]} {
 			puts "ERROR: Switch $switch requires a value"
 			return
 		}
-		
+
 		set value [lindex $args $i]
 		incr i
-		
+
 		switch -- $switch {
 			"-input" {
 				set input_file $value
@@ -164,7 +164,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 	if {[dict exists $parse_dict metadata]} {
 		puts $fp "<div class='metadata'>"
 		puts $fp "<h3>File Information</h3>"
-		
+
 		if {[dict exists $parse_dict metadata module_name]} {
 			puts $fp "<p><strong>Module:</strong> [dict get $parse_dict metadata module_name]</p>"
 		}
@@ -212,7 +212,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 	# Entities, Generics, Ports using q_entity_* helpers
 	foreach ename $entity_names {
 		puts $fp "<h2>Entity: $ename</h2>"
-		
+
 		# Entity comment if available
 		if {[dict exists $parse_dict entities]} {
 			foreach ent [dict get $parse_dict entities] {
@@ -224,7 +224,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 				}
 			}
 		}
-		
+
 		set generics [::aurig::core::analyze::q_entity_generics $parse_dict $ename]
 		if {[llength $generics] > 0} {
 			puts $fp "<h3>Generics</h3><table><tr><th>Name</th><th>Type</th><th>Init</th><th>Description</th></tr>"
@@ -276,14 +276,14 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 			}
 			puts $fp "</table>"
 		}
-		
+
 		# Generate and embed SVG symbol
 		set svg_symbol [::aurig::doc::_generate_entity_symbol $ename $generics $ports]
 		puts $fp "<h3>Block Symbol</h3>"
 		puts $fp "<div class=\"symbol\" style=\"background:#fff;border:1px solid #ddd;padding:20px;margin:12px 0;text-align:center;\">"
 		puts $fp $svg_symbol
 		puts $fp "</div>"
-		
+
 		# Package Dependencies - show which packages this entity uses
 		set entityUses [::aurig::core::analyze::q_uses $parse_dict]
 		if {[llength $entityUses] > 0} {
@@ -305,13 +305,13 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 				puts $fp "</table>"
 			}
 		}
-		
+
 		# Hierarchy & Dependencies - consolidated view showing both parents and children
 		if {$currentEntity ne ""} {
 			# Try to find entity in hierarchy dicts with multiple key variations
 			set children [list]
 			set parents [list]
-			
+
 			# Try finding children - test both plain name and all dict keys
 			if {$allHierarchy ne ""} {
 				if {[dict exists $allHierarchy $currentEntity]} {
@@ -327,7 +327,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 					}
 				}
 			}
-			
+
 			# Try finding parents - test both plain name and all dict keys
 			if {$reverseHierarchy ne ""} {
 				if {[dict exists $reverseHierarchy $currentEntity]} {
@@ -343,11 +343,11 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 					}
 				}
 			}
-			
+
 			# Display consolidated hierarchy section if we found parents or children
 			if {[llength $parents] > 0 || [llength $children] > 0} {
 				puts $fp "<h3>Hierarchy & Dependencies</h3>"
-				
+
 				# Parent Entities (who uses this module)
 				if {[llength $parents] > 0} {
 					puts $fp "<h4>Used By (Parent Entities)</h4>"
@@ -360,13 +360,13 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 					}
 					puts $fp "</table>"
 				}
-				
+
 				# Skip child entities table - it's shown in Architecture Instantiations section below
 				# (The detailed instantiation information is in the Architecture section)
 			}
 		}
 	}
-	
+
 	# Architectures via q_architectures and related helpers
 	set archs [::aurig::core::analyze::q_architectures $parse_dict]
 	if {[llength $archs] > 0} {
@@ -386,21 +386,21 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 				set cmt  [expr {[dict exists $inst comment] ? [dict get $inst comment] : ""}]
 				set line [expr {[dict exists $inst line] ? [dict get $inst line] : ""}]
 				set cond [expr {[dict exists $inst condition] ? [dict get $inst condition] : ""}]
-				
+
 				# Use entity if present, otherwise use component
 				set displayName [expr {$enty ne "" ? $enty : $comp}]
-				
+
 				# Create link if entity exists in the project
 				set childName [::aurig::doc::_strip_lib_prefix $displayName]
 				set childSlug [::aurig::doc::_slug $childName]
 				set displayLink "<a href='$childSlug.html'>$displayName</a>"
-				
+
 				# Use line number if label is empty
 				if {$lbl eq "" && $line ne ""} {
 					set lbl "line $line"
 				}
 				if {$line eq ""} { set line "-" }
-				
+
 				# Build description with condition if present
 				set desc_text ""
 				if {$cond ne ""} {
@@ -411,12 +411,12 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 					append desc_text $cmt
 				}
 				if {$desc_text eq ""} { set desc_text "-" }
-				
+
 				puts $fp "<tr><td>$lbl</td><td>$line</td><td>$displayLink</td><td class='comment'>$desc_text</td></tr>"
 			}
 			puts $fp "</table>"
 		}
-		
+
 		# Processes
 			set procs [::aurig::core::analyze::q_arch_processes $parse_dict $arch]
 			if {[llength $procs] > 0} {
@@ -426,17 +426,17 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 					set sens [expr {[dict exists $pr sensitivity] ? [join [dict get $pr sensitivity] ", "] : ""}]
 					set cmt  [expr {[dict exists $pr comment] ? [dict get $pr comment] : ""}]
 					set line [expr {[dict exists $pr line] ? [dict get $pr line] : ""}]
-					
+
 					# Use line number if label is empty
 					if {$lbl eq "" && $line ne ""} {
 						set lbl "line $line"
 					}
-					
+
 					# Use dash if comment is empty
 					if {$cmt eq ""} {
 						set cmt "-"
 					}
-					
+
 					puts $fp "<tr><td>$lbl</td><td>$sens</td><td class='comment'>$cmt</td></tr>"
 				}
 				puts $fp "</table>"
@@ -475,7 +475,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 				}
 				puts $fp "</table>"
 			}
-			
+
 			# Constants via q_arch_decls_by_kind
 			set consts [::aurig::core::analyze::q_arch_decls_by_kind $parse_dict $arch constant]
 			if {[llength $consts] > 0} {
@@ -509,7 +509,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 				}
 				puts $fp "</table>"
 			}
-			
+
 			# Functions via q_arch_functions
 			set funcs [::aurig::core::analyze::q_arch_functions $parse_dict $arch]
 			if {[llength $funcs] > 0} {
@@ -528,7 +528,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 						}
 					}
 					set cmt [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
-					
+
 					# Format parameters: one per line
 					set formattedParams ""
 					if {$params ne ""} {
@@ -542,12 +542,12 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 						}
 						set formattedParams [join $trimmedParams "<br>"]
 					}
-					
+
 					puts $fp "<tr><td>$n</td><td>$formattedParams</td><td>$retType</td><td class='comment'>$cmt</td></tr>"
 				}
 				puts $fp "</table>"
 			}
-			
+
 			# Procedures via q_arch_procedures
 			set procs [::aurig::core::analyze::q_arch_procedures $parse_dict $arch]
 			if {[llength $procs] > 0} {
@@ -564,7 +564,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 						}
 					}
 					set cmt [expr {[dict exists $d comment] ? [dict get $d comment] : ""}]
-					
+
 					# Format parameters: one per line
 					set formattedParams ""
 					if {$params ne ""} {
@@ -578,7 +578,7 @@ proc ::aurig::doc::_emit_html_doc {parse_dict out_file LOG {sourceViewerMap {}} 
 						}
 						set formattedParams [join $trimmedParams "<br>"]
 					}
-					
+
 					puts $fp "<tr><td>$n</td><td>$formattedParams</td><td class='comment'>$cmt</td></tr>"
 				}
 				puts $fp "</table>"
@@ -650,12 +650,12 @@ proc ::aurig::doc::_emit_md_doc {parse_dict out_file LOG} {
 		foreach ent [dict get $parse_dict entities] {
 			set ename [expr {[dict exists $ent name] ? [dict get $ent name] : "entity"}]
 			puts $fp "\n## Entity: $ename\n"
-			
+
 			# Entity comment if available
 			if {[dict exists $ent comment]} {
 				puts $fp "*[dict get $ent comment]*\n"
 			}
-			
+
 			if {[dict exists $ent generics] && [llength [dict get $ent generics]]} {
 				puts $fp "\n### Generics\n| Name | Type | Init | Description |\n|---|---|---|---|"
 				foreach g [dict get $ent generics] {
@@ -700,17 +700,17 @@ proc ::aurig::doc::_emit_md_doc {parse_dict out_file LOG} {
 					set sens [expr {[dict exists $pr sensitivity] ? [join [dict get $pr sensitivity] ", "] : ""}]
 					set cmt [expr {[dict exists $pr comment] ? [dict get $pr comment] : ""}]
 					set line [expr {[dict exists $pr line] ? [dict get $pr line] : ""}]
-					
+
 					# Use line number if label is empty
 					if {$lbl eq "" && $line ne ""} {
 						set lbl "line $line"
 					}
-					
+
 					# Use dash if comment is empty
 					if {$cmt eq ""} {
 						set cmt "-"
 					}
-					
+
 					puts $fp "| $lbl | $sens | $cmt |"
 				}
 			}
