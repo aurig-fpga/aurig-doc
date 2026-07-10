@@ -39,5 +39,5 @@ repos:
         language: pygrep
         # KEEP IN SYNC (verbatim) with the no-ai-attribution job in
         # .github/workflows/ci.yml -- same pattern, same escaping.
-        entry: '(?i)(co-authored-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|assisted-by:.*(claude|copilot|codex|chatgpt)|generated.with.*(claude|copilot|codex|chatgpt)|noreply@anthropic\.com|🤖.*generated)'
+        entry: '(?i)(co-authored-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|assisted-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|generated.with.*(claude|copilot|codex|anthropic|openai|chatgpt)|noreply@anthropic\.com|🤖.*generated)'
         stages: [commit-msg]

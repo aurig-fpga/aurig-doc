@@ -95,7 +95,7 @@ jobs:
         # understands the inline (?i) flag).
         run: |
           git log "origin/${{ github.base_ref }}..HEAD" --format=%B > /tmp/pr-commit-msgs.txt
-          grep -P '(?i)(co-authored-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|assisted-by:.*(claude|copilot|codex|chatgpt)|generated.with.*(claude|copilot|codex|chatgpt)|noreply@anthropic\.com|🤖.*generated)' /tmp/pr-commit-msgs.txt && status=0 || status=$?
+          grep -P '(?i)(co-authored-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|assisted-by:.*(claude|copilot|codex|anthropic|openai|chatgpt)|generated.with.*(claude|copilot|codex|anthropic|openai|chatgpt)|noreply@anthropic\.com|🤖.*generated)' /tmp/pr-commit-msgs.txt && status=0 || status=$?
           if [ "$status" -eq 0 ]; then
             echo "ERROR: AI attribution detected in PR commit messages (matches above)."
             exit 1
