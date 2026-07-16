@@ -173,6 +173,71 @@ assert_true "manual file_sets fallback did not engage" \
     [expr {[string first "Fallback: manually parsing" $out] < 0}] \
     "fallback marker found in runner output:\n$out"
 
+# ---------------------------------------------------------------------------
+# (d) INI guard: an INI manifest for which collect_project_files yields zero
+#     entries must NOT enter the manual file_sets fallback (a YAML-only parse
+#     over $Y, which the INI branch never sets). Pre-guard this crashed with
+#     the raw Tcl error {can't read "Y": no such variable}; post-guard the
+#     empty file list flows through to the proper "cannot locate" diagnostic.
+# ---------------------------------------------------------------------------
+header "Top-Present: INI manifest with empty collect skips the YAML fallback"
+
+set manifest_ini [file join $fixture_dir project_fallback.ini]
+set outdir_ini [file join $build_dir md_ini_fallback]
+set ini_rc [catch {
+    ::aurig::doc::project_documenter \
+        -ini $manifest_ini -outdir $outdir_ini -format md -verbosity 0
+} ini_err]
+
+assert_true "INI manifest with zero collected files raises an error" \
+    [expr {$ini_rc != 0}] \
+    "project_documenter unexpectedly succeeded: $ini_err"
+assert_true "failure is NOT the raw Tcl variable crash" \
+    [expr {![string match {*can't read "Y"*} $ini_err]}] \
+    "msg: $ini_err"
+assert_true "failure is the proper cannot-locate diagnostic" \
+    [string match "*cannot locate top-level file matching entity 'ghost_entity'*" $ini_err] \
+    "msg: $ini_err"
+
+# ---------------------------------------------------------------------------
+# (e) YAML fallback regression: when collect_project_files returns nothing
+#     for a YAML manifest, the manual file_sets fallback must still engage
+#     and produce full documentation. collect_project_files is stubbed to an
+#     empty dict so the fallback is the ONLY possible file source; the
+#     rename is restored in a finally clause so a mid-test error cannot leak
+#     the stub into later tests, and a post-restore probe proves the real
+#     proc is back in service.
+# ---------------------------------------------------------------------------
+header "Top-Present: YAML manifest with empty collect still uses file_sets fallback"
+
+rename ::aurig::core::util::collect_project_files ::__real_collect_project_files
+proc ::aurig::core::util::collect_project_files {args} { return [dict create] }
+
+set outdir_fb [file join $build_dir md_yaml_fallback]
+try {
+    set fb_rc [catch {
+        ::aurig::doc::project_documenter \
+            -config $manifest -outdir $outdir_fb -format md -verbosity 0
+    } fb_result]
+
+    assert_true "YAML generation succeeds via the file_sets fallback" \
+        [expr {$fb_rc == 0}] \
+        "project_documenter errored: $fb_result"
+    assert_file_exists "fallback generated the top entity page" \
+        [file join $outdir_fb top_unit.md]
+    assert_file_contains "fallback hierarchy is rooted at top_unit" \
+        [file join $outdir_fb index.md] "Top: **top_unit**"
+} finally {
+    rename ::aurig::core::util::collect_project_files {}
+    rename ::__real_collect_project_files ::aurig::core::util::collect_project_files
+}
+
+set restored_files [::aurig::core::util::collect_project_files \
+    -from $manifest -format yaml]
+assert_true "collect_project_files is restored and operational after the stub" \
+    [expr {[dict size $restored_files] > 0}] \
+    "post-restore collect returned [dict size $restored_files] entries"
+
 header "Test Summary"
 set total [expr {$tests_passed + $tests_failed}]
 puts "Total:  $total"

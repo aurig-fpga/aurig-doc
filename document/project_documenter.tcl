@@ -1378,7 +1378,9 @@ proc ::aurig::doc::project_documenter {args} {
     }
 
     # Fallback: if collect_project_files returned nothing, manually parse file_sets
-    if {[dict size $allFiles] == 0} {
+    # (YAML only: $Y is set exclusively by the YAML branch above, and INI
+    # manifests have no file_sets section to parse)
+    if {[dict size $allFiles] == 0 && $cfgFormat eq "yaml"} {
         if {$verbosity > 1} { puts "  Fallback: manually parsing file_sets from YAML..." }
 
         if {[dict exists $Y file_sets]} {
