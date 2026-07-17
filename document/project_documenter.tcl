@@ -1790,16 +1790,25 @@ proc ::aurig::doc::project_documenter {args} {
     set topEntity [lindex $allEntities 0]
     ::aurig::doc::_emit_index $outdir $fmt $projectName $topEntity $allHierarchy $allEntities $allPackages $configData $entityToFile $entityToDesc $packageToFile $packageToDesc $includeLogo
 
-    # Build file info dict for file list page (convert scanned dict to proper structure)
+    # Build file info dict for file list page (convert scanned dict to proper
+    # structure). Library labels come from the manifest records ($allFiles);
+    # keys are normalized on both sides because probe-resolved paths (e.g. a
+    # top found by filesystem search) are not. Files with no manifest record
+    # have no declared library and keep "".
+    set libByPath [dict create]
+    dict for {filekey fileinfo} $allFiles {
+        if {[dict exists $fileinfo lib]} {
+            dict set libByPath [file normalize [dict get $fileinfo fullpath]] [dict get $fileinfo lib]
+        }
+    }
     set fileInfoDict [dict create]
     dict for {filepath val} $scanned {
-        dict set fileInfoDict $filepath [dict create fullpath $filepath lib ""]
-    }
-    # Try to add library info from entity and package maps
-    dict for {entity filepath} $entityToFile {
-        if {[dict exists $fileInfoDict $filepath]} {
-            dict set fileInfoDict $filepath lib "futurama_lib"
+        set lib ""
+        set norm [file normalize $filepath]
+        if {[dict exists $libByPath $norm]} {
+            set lib [dict get $libByPath $norm]
         }
+        dict set fileInfoDict $filepath [dict create fullpath $filepath lib $lib]
     }
 
     # Generate file list page
