@@ -187,15 +187,22 @@ assert_file_exists "runner generated files.html" $files_page
 # Walk the row structure emitted by _emit_file_list: each cell sits on its
 # own line, in column order File Name, Type, Contains, Library, Actions.
 set lib_by_file [dict create]
+set raw_row_count 0
 set page_lines [split [read_text $files_page] "\n"]
 for {set i 0} {$i < [llength $page_lines]} {incr i} {
     if {[regexp {<td><strong>([^<]+)</strong></td>} [lindex $page_lines $i] -> row_file]} {
+        incr raw_row_count
         if {[regexp {<td>([^<]*)</td>} [lindex $page_lines [expr {$i + 3}]] -> row_lib]} {
             dict set lib_by_file $row_file $row_lib
         }
     }
 }
 
+# Raw row count is independent of the by-basename dict, which would collapse
+# duplicate rows or two files sharing a basename.
+assert_true "file list emits exactly one row per scanned file" \
+    [expr {$raw_row_count == 2}] \
+    "parsed $raw_row_count file rows"
 assert_true "file list has a row per scanned file" \
     [expr {[dict size $lib_by_file] == 2}] \
     "parsed [dict size $lib_by_file] rows: [dict keys $lib_by_file]"
