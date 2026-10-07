@@ -3,14 +3,15 @@
 # Copyright 2024-2026 LogiMentor S.r.l.
 
 #=============================================================================
-# Architecture body line numbers in the HTML output.
+# Architecture body line numbers in the HTML and Markdown output.
 #
 # Regression coverage for aurig-core#23: with a blank line in the
 # architecture declarative tail (between the last declaration and `begin`),
 # the parser reported body statements one line too early. aurig-doc prints
-# those parser lines verbatim in two places of _emit_html_doc:
-#   - the Line column of the Instantiations table;
-#   - the "line N" label given to an unlabelled process.
+# those parser lines verbatim:
+#   - _emit_html_doc: the Line column of the Instantiations table;
+#   - _emit_html_doc and _emit_md_doc: the "line N" label given to an
+#     unlabelled process.
 #
 # Expected lines are found by searching the fixture text, independently of
 # the parser. A control fixture with the same content minus the blank line
@@ -175,6 +176,23 @@ proc check_layout {title with_blank run_dir} {
         regexp {<tr><td>line ([^<]*)</td>} $proc_table -> proc_actual
     }
     assert_line "$tag: unlabelled process 'line N' label" $proc_line $proc_actual
+
+    # Markdown: _emit_md_doc prints the same "line N" process label. Its
+    # Instantiations table has no line column, so only the label is checked.
+    set md_file [file join $run_dir "body_lines_$tag.md"]
+    ::aurig::doc::documenter -input $vhd_file -format md -output $md_file
+    if {![file exists $md_file]} {
+        fail "$tag: Markdown output generated" "Missing file: $md_file"
+        return
+    }
+    pass "$tag: Markdown output generated"
+    set md [read_text $md_file]
+
+    set md_proc_actual ""
+    if {[regexp {### Processes\n(.*?)(?:\n\n|$)} $md -> md_proc_table]} {
+        regexp {\| line ([^ |]*) \|} $md_proc_table -> md_proc_actual
+    }
+    assert_line "$tag: Markdown unlabelled process 'line N' label" $proc_line $md_proc_actual
 
     return [list $inst_line $proc_line]
 }
