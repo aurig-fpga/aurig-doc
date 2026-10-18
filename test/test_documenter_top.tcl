@@ -174,6 +174,60 @@ assert_true "manual file_sets fallback did not engage" \
     "fallback marker found in runner output:\n$out"
 
 # ---------------------------------------------------------------------------
+# (c2) File list Library column: every label must come from the manifest's
+#      declared libraries (the fixture declares only `work`). Files reached
+#      outside the manifest (e.g. a filesystem-probed top) have no declared
+#      library and must render an empty cell -- never an invented name.
+# ---------------------------------------------------------------------------
+header "Top-Present: file list Library column reflects manifest libraries"
+
+set files_page [file join $outdir_runner files.html]
+assert_file_exists "runner generated files.html" $files_page
+
+# Walk the row structure emitted by _emit_file_list: each cell sits on its
+# own line, in column order File Name, Type, Contains, Library, Actions.
+set lib_by_file [dict create]
+set raw_row_count 0
+set page_lines [split [read_text $files_page] "\n"]
+for {set i 0} {$i < [llength $page_lines]} {incr i} {
+    if {[regexp {<td><strong>([^<]+)</strong></td>} [lindex $page_lines $i] -> row_file]} {
+        incr raw_row_count
+        if {[regexp {<td>([^<]*)</td>} [lindex $page_lines [expr {$i + 3}]] -> row_lib]} {
+            dict set lib_by_file $row_file $row_lib
+        }
+    }
+}
+
+# Raw row count is independent of the by-basename dict, which would collapse
+# duplicate rows or two files sharing a basename.
+assert_true "file list emits exactly one row per scanned file" \
+    [expr {$raw_row_count == 2}] \
+    "parsed $raw_row_count file rows"
+assert_true "file list has a row per scanned file" \
+    [expr {[dict size $lib_by_file] == 2}] \
+    "parsed [dict size $lib_by_file] rows: [dict keys $lib_by_file]"
+
+foreach row_file {top_unit.vhd leaf_x.vhd} {
+    set row_lib "<row missing>"
+    if {[dict exists $lib_by_file $row_file]} {
+        set row_lib [dict get $lib_by_file $row_file]
+    }
+    assert_true "$row_file carries its manifest library (work)" \
+        [expr {$row_lib eq "work"}] "Library column: '$row_lib'"
+}
+
+set declared_libs {work}
+set stray_libs [list]
+dict for {row_file row_lib} $lib_by_file {
+    if {$row_lib ne "" && [lsearch -exact $declared_libs $row_lib] < 0} {
+        lappend stray_libs "$row_file='$row_lib'"
+    }
+}
+assert_true "every Library value is a declared manifest lib or empty" \
+    [expr {[llength $stray_libs] == 0}] \
+    "unexpected values: [join $stray_libs {, }]"
+
+# ---------------------------------------------------------------------------
 # (d) INI guard: an INI manifest for which collect_project_files yields zero
 #     entries must NOT enter the manual file_sets fallback (a YAML-only parse
 #     over $Y, which the INI branch never sets). Pre-guard this crashed with
