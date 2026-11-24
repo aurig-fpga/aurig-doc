@@ -40,6 +40,12 @@ puts "\n=== Test 7: Invalid format ==="
 ::aurig::doc::documenter -input test/test_entity.vhd -format xml
 
 puts "\n=== Test 8: File not found ==="
-::aurig::doc::documenter -input nonexistent.vhd -format md
+if {![catch {::aurig::doc::documenter -input nonexistent.vhd -format md} message options]} {
+    error "Expected missing input to raise a source error"
+}
+if {[lrange [dict get $options -errorcode] 0 4] ne {AURIG CORE SOURCE IO OPEN}} {
+    return -options $options $message
+}
+puts $message
 
 puts "\n=== All validation tests completed ==="
