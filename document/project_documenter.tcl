@@ -605,6 +605,10 @@ proc ::aurig::doc::_emit_source_viewer {sourceFile outdir {includeLogo 0}} {
 
     set htmlEscapes {& &amp; < &lt; > &gt; ' &#39; \" &quot;}
     set sourceCode [string map $htmlEscapes [dict get $source text]]
+    # HTML consumes one LF immediately after a textarea start tag.
+    if {[string index $sourceCode 0] eq "\n"} {
+        set sourceCode "\n$sourceCode"
+    }
     set fileName [string map $htmlEscapes $fileName]
     set sourceFile [string map $htmlEscapes $sourceFile]
 

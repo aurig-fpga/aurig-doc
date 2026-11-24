@@ -194,6 +194,24 @@ proc valid_cases {} {
     }
 }
 
+proc leading_line_case {} {
+    global root
+    set dir [file join $root leading]
+    file mkdir $dir
+    write_bytes [file join $dir unit.vhd] "\r\n\rentity Dut is\nend entity;"
+    set cfg [manifest $dir {unit.vhd}]
+    set dest [file join $dir html]
+    ::aurig::doc::project_documenter -config $cfg -outdir $dest
+    set page [utf8_artifact [file join $dest src_unit.vhd.html]]
+    set found [regexp {<textarea id='code'>(.*?)</textarea>} $page -> viewed]
+    if {$found && [string index $viewed 0] eq "\n"} {
+        # HTML parsing consumes one immediate LF after the textarea start.
+        set viewed [string range $viewed 1 end]
+    }
+    check "viewer retains both leading blank lines" \
+        [expr {$found && $viewed eq "\n\nentity Dut is\nend entity;"}]
+}
+
 proc report_cases {} {
     global root
     set dir [file join $root report]
@@ -362,7 +380,7 @@ proc capability_cases {} {
 }
 
 puts "Tcl [info patchlevel] via [info nameofexecutable]; evidence=[file nativename $root]"
-foreach section {valid_cases report_cases rejected_cases capability_cases} {
+foreach section {valid_cases leading_line_case report_cases rejected_cases capability_cases} {
     if {[catch {$section} problem options]} {
         check $section 0 [dict get $options -errorinfo]
     }
