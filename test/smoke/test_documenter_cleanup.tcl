@@ -34,10 +34,10 @@ puts "\n=== Test 5: Missing -input ==="
 ::aurig::doc::documenter -format md
 
 puts "\n=== Test 6: Missing -format ==="
-::aurig::doc::documenter -input test/test_entity.vhd
+::aurig::doc::documenter -input test/fixtures/documenter/top_project/rtl/top_unit.vhd
 
 puts "\n=== Test 7: Invalid format ==="
-::aurig::doc::documenter -input test/test_entity.vhd -format xml
+::aurig::doc::documenter -input test/fixtures/documenter/top_project/rtl/top_unit.vhd -format xml
 
 puts "\n=== Test 8: File not found ==="
 ::aurig::doc::documenter -input nonexistent.vhd -format md
