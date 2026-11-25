@@ -142,10 +142,10 @@ if {[catch {
         -outdir $outdir \
         -format $fmt \
         -verbosity $verbosity
-} err]} {
+} err options]} {
     puts stderr $err
-    if {[info exists ::errorInfo]} {
-        puts stderr $::errorInfo
+    if {![::aurig::doc::_is_source_error $options]} {
+        puts stderr [dict get $options -errorinfo]
     }
     exit 2
 }

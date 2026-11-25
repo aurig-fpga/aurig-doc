@@ -27,8 +27,9 @@ generator.
 ## Prerequisites
 
 - **Tcl 8.5+** (8.6 recommended; CI runs 8.6).
-- A local checkout of **`aurig-core`** — required; aurig-doc bundles no parser of
-  its own.
+- A local checkout of stable **`aurig-core` 0.2.x** with the shared reader
+  for VHDL generation. Use the exact Core commit in the
+  [README installation instructions](README.md#development).
 - **tcllib** (the `yaml` package) — needed only by `project_documenter` when the
   project manifest is YAML. The single-file `documenter` path needs no tcllib
   (its parser is regex-based).
@@ -42,6 +43,7 @@ variable (a Tcl list of directories prepended to `::auto_path`). Point it at you
 ```sh
 # Clone the dependency next to aurig-doc
 git clone https://github.com/aurig-fpga/aurig-core ../aurig-core
+git -C ../aurig-core checkout --detach c6cd8bb44fea31b4d838452de38395c7772a3f56
 
 # Tcl 8.6 + tcllib (Debian/Ubuntu)
 sudo apt-get install -y tcl tcllib

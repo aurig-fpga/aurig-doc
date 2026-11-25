@@ -25,15 +25,15 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: aurig-fpga/aurig-core
+          # Verified Core 0.2.0 commit on main from PR #97.
+          ref: c6cd8bb44fea31b4d838452de38395c7772a3f56
           path: aurig-core
+          persist-credentials: false
 
       - name: Install Tcl 8.6 + tcllib
         run: |
           sudo apt-get update
           sudo apt-get install -y tcl tcllib
-          tclsh <<'EOF'
-          puts "tcl patchlevel: [info patchlevel]"
-          EOF
 
       - name: Run cross-repo dependency proof + ported documenter tests
         working-directory: aurig-doc
@@ -41,15 +41,21 @@ jobs:
           # TCLLIBPATH is a Tcl list of dirs prepended to ::auto_path; point it
           # at the aurig-core checkout so `package require aurig::core`
           # resolves (and is pulled transitively by aurig::doc).
-          TCLLIBPATH: ${{ github.workspace }}/aurig-core
+          TCLLIBPATH: "{${{ github.workspace }}/aurig-core}"
+          TCLSH: /usr/bin/tclsh8.6
         run: |
           set -e
+          # Keep the Linux harness loop readable by the local regression runner.
+          tclsh() { "$TCLSH" "$@"; }
+          git -C ../aurig-core rev-parse HEAD
+          tclsh .github/ci/check-doc-tcl.tcl ../aurig-core
           fail=0
           tests=(
             test/test_doc_dependency.tcl
             test/test_documenter.tcl
             test/test_documenter_top.tcl
             test/test_documenter_body_lines.tcl
+            test/test_doc_source_encoding.tcl
             test/test_doc_runner.tcl
             test/test_doc_tcllib_absent.tcl
             test/smoke/test_documenter_cleanup.tcl
@@ -64,6 +70,99 @@ jobs:
             fi
           done
           exit $fail
+
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: aurig-doc checkout
+    steps:
+      - name: Checkout aurig-doc
+        uses: actions/checkout@v6
+        with:
+          path: aurig-doc checkout
+          persist-credentials: false
+
+      - name: Checkout aurig-core (dependency)
+        uses: actions/checkout@v6
+        with:
+          repository: aurig-fpga/aurig-core
+          # Keep in sync with the Linux job.
+          ref: c6cd8bb44fea31b4d838452de38395c7772a3f56
+          path: aurig-core checkout
+          persist-credentials: false
+
+      # Magicsplat Tcl 1.16.0 (Tcl 8.6.16, tcllib 2.0), the build the
+      # aurig-core README lists as verified. The MSI is pinned by SHA-256;
+      # a different file fails the job.
+      - name: Install Tcl 8.6 + tcllib
+        run: |
+          $msi = "$env:RUNNER_TEMP\tcl-8.6.16-installer-1.16.0-x64.msi"
+          curl.exe -sSfL --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 30 --max-time 180 -o $msi https://sourceforge.net/projects/magicsplat/files/magicsplat-tcl/tcl-8.6.16-installer-1.16.0-x64.msi/download
+          if ($LASTEXITCODE -ne 0) { "ERROR: download failed (exit $LASTEXITCODE)"; exit 1 }
+          $sha256 = (Get-FileHash $msi -Algorithm SHA256).Hash
+          if ($sha256 -ne '754A5FC471FDAE655DD0CEC1FD5613B2302512ADADCDE28E17B516B0F5AED17A') {
+            "ERROR: checksum mismatch: $sha256"
+            exit 1
+          }
+          $log = "$env:RUNNER_TEMP\tcl-msi.log"
+          $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$msi`" ALLUSERS=1 APPLICATIONFOLDER=C:\Tcl /qn /norestart /l*v `"$log`""
+          if ($p.ExitCode -ne 0) {
+            Get-Content $log -Tail 50
+            "ERROR: msiexec exited $($p.ExitCode)"
+            exit 1
+          }
+          "TCLSH=C:\Tcl\bin\tclsh.exe" >> $env:GITHUB_ENV
+
+      - name: Verify Tcl and transitive Core package resolution
+        run: |
+          if (!$IsWindows) { throw 'Expected a native Windows runner' }
+          if (!(Test-Path -LiteralPath $env:TCLSH -PathType Leaf)) {
+            throw "Magicsplat Tcl executable missing: $env:TCLSH"
+          }
+          $core = "$env:GITHUB_WORKSPACE/aurig-core checkout" -replace '\\', '/'
+          $env:TCLLIBPATH = "{$core}"
+          "TCLLIBPATH=$env:TCLLIBPATH" >> $env:GITHUB_ENV
+          git -C $core rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:TCLSH .github/ci/check-doc-tcl.tcl $core
+          exit $LASTEXITCODE
+
+      - name: Run Doc harnesses
+        run: |
+          # The Linux list is also consumed by the permanent regression runner.
+          $tests = @(
+            'test/test_doc_dependency.tcl'
+            'test/test_documenter.tcl'
+            'test/test_documenter_top.tcl'
+            'test/test_documenter_body_lines.tcl'
+            'test/test_doc_source_encoding.tcl'
+            'test/test_doc_runner.tcl'
+            'test/test_doc_tcllib_absent.tcl'
+            'test/smoke/test_documenter_cleanup.tcl'
+          )
+          $linux = Select-String -Path .github/workflows/ci.yml -Pattern '^\s+(test/\S+\.tcl)$' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value }
+          if (($tests -join "`n") -ne ($linux -join "`n")) {
+            throw 'Windows harness list differs from the Linux list'
+          }
+          $failed = 0
+          foreach ($test in $tests) {
+            Write-Host "==================== $test ===================="
+            & $env:TCLSH $test
+            $status = $LASTEXITCODE
+            if ($status -eq 0) {
+              Write-Host "RESULT: PASS  $test"
+            } else {
+              Write-Host "RESULT: FAIL  $test (exit $status)"
+              $failed = 1
+            }
+          }
+          exit $failed
 
   # Hygiene + secrets scan. This is the authoritative gitleaks run: local
   # hook installs may fail to build it on restricted networks, CI always

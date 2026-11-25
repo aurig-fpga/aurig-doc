@@ -70,7 +70,10 @@ set prc [catch {$pos eval {package require aurig::doc}} pver]
 
 ok "POSITIVE: package require aurig::doc succeeds (core reachable on auto_path)" \
     {$prc == 0}
-ok "POSITIVE: reports document version 0.1.0" {$pver eq "0.1.0"}
+ok "POSITIVE: reports document version 0.2.0" {$pver eq "0.2.0"}
+ok "POSITIVE: Doc index and provided version agree" {[$pos eval {expr {
+    [package ifneeded aurig::doc 0.2.0] ne "" && [package provide aurig::doc] eq "0.2.0"
+}}]}
 ok "POSITIVE: requiring document transitively pulled aurig::core" \
     {[$pos eval {expr {![catch {package present aurig::core}]}}]}
 ok "POSITIVE: core parser proc ::aurig::core::analyze::vhdlscan is now defined" \
@@ -121,6 +124,53 @@ ok "POSITIVE: emitted Markdown names the entity DocProofEnt" \
     {[string first DocProofEnt $md_text] >= 0}
 
 interp delete $pos
+
+# Direct-source entry points keep the eager baseline requirement.
+foreach module {documenter project_documenter symbol_generator} {
+    foreach version {0.1.0 0.3.0 1.0.0} {
+        set child [interp create]
+        $child eval [list package provide aurig::core $version]
+        set status [catch {$child eval [list source [file join $doc_root document $module.tcl]]} message]
+        ok "direct-source $module with Core $version" {$status == ($version ne "0.1.0")}
+        if {$version ne "0.1.0"} {
+            ok "eager failure names version range and how to switch" {
+                [string match *0.1.0-0.3.0* $message] &&
+                [string match "*$version*" $message] &&
+                [string match *TCLLIBPATH*fresh*interpreter* $message]
+            }
+        }
+        interp delete $child
+    }
+}
+
+foreach {version reader accepted} {
+    0.1.0 1 0
+    0.2.7 1 1
+    0.2.0a1 1 0
+    0.2.0b1 1 0
+    0.2.7 0 0
+} {
+    set child [interp create]
+    $child eval [list set auto_path [linsert $strip_core 0 $doc_root]]
+    $child eval [list package provide aurig::core $version]
+    if {$reader} {
+        $child eval {
+            namespace eval ::aurig::core::util {}
+            proc ::aurig::core::util::read_vhdl_source {path} {return [dict create text synthetic]}
+        }
+    }
+    $child eval {package require aurig::doc}
+    set status [catch {$child eval {::aurig::doc::_require_source_reader}} message]
+    ok "source operation for Core $version (reader present: $reader)" {$status == !$accepted}
+    if {!$accepted} {
+        ok "source failure explains the required Core and how to switch" {
+            [string match *0.2.0-0.3.0* $message] &&
+            [string match "*$version*" $message] &&
+            [string match *TCLLIBPATH*fresh*interpreter* $message]
+        }
+    }
+    interp delete $child
+}
 file delete -force $sandbox
 
 # ---------------------------------------------------------------------------
