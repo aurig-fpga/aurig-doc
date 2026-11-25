@@ -23,9 +23,11 @@ Both live under the `aurig::doc` package:
 
 ## Requirements
 
-- **Tcl 8.5+** (8.6 recommended; CI runs 8.6).
-- **[AURIG Core](https://github.com/aurig-fpga/aurig-core)** — required. AURIG Doc bundles no
-  parser of its own; it pulls `aurig::core` off the Tcl package path (see below).
+- **Tcl 8.5+** (8.6 recommended). On Tcl 8.5, generated text must be
+  written to regular, readable, seekable output files.
+- **AURIG Core** with `::aurig::core::util::read_vhdl_source`. Point
+  `TCLLIBPATH` at a Core checkout that provides this capability.
+  [AURIG Core](https://github.com/aurig-fpga/aurig-core)
 - **tcllib** (`yaml`) — needed only by `project_documenter` when the project manifest is
   YAML. The single-file `documenter` path needs no tcllib (the parser is regex-based).
 
@@ -54,6 +56,19 @@ package require yaml   ;# tcllib, for a YAML manifest
 # "docs" and -format defaults to html.
 ::aurig::doc::project_documenter -config project.yaml -format html -outdir build/docs
 ```
+
+## Output and source errors
+
+Generated HTML, Markdown and text reports use BOM-free UTF-8. Rejected VHDL
+sources raise a Tcl error with a structured `-errorcode`. The project
+runner (`tools/run_doc_project_inprocess.tcl`) prints the diagnostic and exits
+with status 2.
+
+A mixed project can generate valid pages and report the rejected sources in
+`documentation_report.txt`. Generation is incremental, so pages from an
+earlier run can remain after a failed rerun. Check the API result or CLI exit
+status before publishing the output directory. Keep source files stable
+during generation because the parser and source viewer read them separately.
 
 ## As part of the stack (resolving AURIG Core)
 
@@ -88,9 +103,9 @@ TCLLIBPATH="$(cd ../aurig-core && pwd)" tclsh test/smoke/test_documenter_cleanup
 
 `test/test_doc_dependency.tcl` proves `aurig::doc` resolves only when `aurig::core` is
 reachable (and fails cleanly when it isn't); `test/test_doc_tcllib_absent.tcl` proves the
-single-file path works without tcllib while the YAML project path requires it. CI
-(`.github/workflows/ci.yml`) checks out aurig-core as a sibling, sets `TCLLIBPATH`, and
-runs the same four tests on Tcl 8.6.
+single-file path works without tcllib while the YAML project path requires it.
+CI checks out the pinned Core dependency, sets `TCLLIBPATH` and runs all eight
+harnesses on Tcl 8.6 on Linux and Windows. [CI test list](.github/workflows/ci.yml)
 
 ## License
 
