@@ -432,19 +432,18 @@ proc rejected_cases {} {
 
 proc capability_cases {} {
     global root
-    # Simulate older Core in this process. The task's separate probes also
-    # exercise both exact old revisions in clean subprocesses.
+    # Simulate an incomplete Core that advertises the required version.
     file mkdir [file join $root capability]
     set dir [file join $root capability]
     set source [file join $dir unit.vhd]
     write_bytes $source {entity Dut is end entity;}
     set cfg [manifest $dir {unit.vhd}]
     rename ::aurig::core::util::read_vhdl_source ::aurig::core::util::hidden_source_reader
-    check "Doc package remains loadable" [expr {[package require aurig::doc] eq "0.1.0"}]
+    check "Doc package remains loadable" [expr {[package require aurig::doc] eq "0.2.0"}]
     foreach call [list \
         [list ::aurig::doc::documenter -input $source -format md -output [file join $dir unit.md]] \
         [list ::aurig::doc::project_documenter -config $cfg -outdir [file join $dir out]]] {
-        set message [expect_error "older Core capability" $call {AURIG DOC SOURCE CAPABILITY}]
+        set message [expect_error "incomplete Core capability" $call {AURIG DOC SOURCE CAPABILITY}]
         contains "capability names missing reader" $message read_vhdl_source
         contains "capability gives dependency guidance" $message TCLLIBPATH
     }

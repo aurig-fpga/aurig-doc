@@ -4,7 +4,7 @@
 # Standalone package index for aurig-doc: a snapshot carve of tcl4fpga's
 # documentation layer (document/{documenter,project_documenter,symbol_generator}.tcl).
 #
-# It declares ONE package, aurig::doc 0.1.0 (name mirrors the
+# It declares ONE package, aurig::doc 0.2.0 (name mirrors the
 # namespace ::aurig::doc).
 #
 # The three files were AMBIENT-LOADED by the tcl4fpga umbrella (init.tcl) and
@@ -13,14 +13,14 @@
 # is called -- define order among them is irrelevant since Tcl resolves procs
 # at call time.
 #
-# The parser/util core is NOT bundled here: each document file declares
-# `package require aurig::core`, expected to resolve from aurig-core on
+# The parser/util core is NOT bundled here: each document file declares a bounded
+# Core requirement, expected to resolve from aurig-core on
 # ::auto_path (set TCLLIBPATH to the aurig-core checkout in dev/CI). No core,
 # lint, leaf, or umbrella packages live here.
 
-package ifneeded aurig::doc 0.1.0 [list apply {dir {
+package ifneeded aurig::doc 0.2.0 [list apply {dir {
     source [file join $dir document documenter.tcl]
     source [file join $dir document project_documenter.tcl]
     source [file join $dir document symbol_generator.tcl]
-    package provide aurig::doc 0.1.0
+    package provide aurig::doc 0.2.0
 }} $dir]

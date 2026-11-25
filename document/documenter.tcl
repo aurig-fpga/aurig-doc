@@ -20,16 +20,32 @@
 # Parser/util closure this layer builds on (::aurig::core::analyze::* and
 # ::aurig::core::util::*). aurig-doc does not bundle core, so declare the
 # dependency explicitly (idempotent under the package index).
-package require aurig::core
+apply {{} {
+    if {[catch {package require aurig::core 0.1.0-0.3.0} message options]} {
+        return -options $options "$message. Set TCLLIBPATH to a compatible aurig-core checkout. If a conflicting version is loaded, start a fresh Tcl interpreter."
+    }
+}}
 
 namespace eval ::aurig::doc {
 	namespace export documenter _emit_md_doc _emit_html_doc
 }
 
 proc ::aurig::doc::_require_source_reader {} {
+	set status [catch {package require aurig::core 0.2.0-0.3.0} version options]
+	if {$status || [regexp {[ab]} $version]} {
+		set message "VHDL documentation requires stable aurig::core 0.2.0-0.3.0. Set TCLLIBPATH to a compatible aurig-core checkout."
+		set loaded [package provide aurig::core]
+		if {$loaded ne ""} {
+			append message " Loaded aurig::core $loaded. Start a fresh Tcl interpreter after selecting compatible checkouts."
+		}
+		if {$status} {
+			return -options $options "$message Tcl package error: $version"
+		}
+		return -code error -errorcode {AURIG DOC SOURCE VERSION} "$message Prereleases are unsupported."
+	}
 	if {![llength [info commands ::aurig::core::util::read_vhdl_source]]} {
 		return -code error -errorcode {AURIG DOC SOURCE CAPABILITY} \
-			"aurig-doc requires aurig-core with read_vhdl_source. Set TCLLIBPATH to a compatible aurig-core checkout."
+			"Loaded aurig::core $version lacks ::aurig::core::util::read_vhdl_source, required by VHDL documentation with Core 0.2.0-0.3.0. Set TCLLIBPATH to a compatible aurig-core checkout. Then start a fresh Tcl interpreter."
 	}
 }
 

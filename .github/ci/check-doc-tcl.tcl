@@ -22,9 +22,14 @@ set loaded_sources {}
 trace add execution ::source enter record_source
 set doc_version [package require aurig::doc]
 trace remove execution ::source enter record_source
+set core_version [package present aurig::core]
+if {$doc_version ne "0.2.0" || $core_version ne "0.2.0"} {
+    error "Expected Doc and Core 0.2.0, got Doc $doc_version and Core $core_version"
+}
 puts "aurig::doc $doc_version from $doc_root"
-puts "aurig::core [package present aurig::core] from $core_root"
+puts "aurig::core $core_version from $core_root"
 foreach {root relative} [list $doc_root document/documenter.tcl \
+    $doc_root document/project_documenter.tcl $doc_root document/symbol_generator.tcl \
     $core_root core.tcl $core_root util/vhdl_source.tcl $core_root analyze/vhdlscan.tcl] {
     set expected [file normalize [file join $root $relative]]
     if {$expected ni $loaded_sources} {

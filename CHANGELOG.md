@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Doc package 0.2.0 loads Core `0.1.0-0.3.0`. VHDL operations require stable
+  Core `0.2.0-0.3.0` with the shared reader. Precomputed output can still
+  use supported older Core versions.
+- Generated text uses BOM-free UTF-8. Source rejections propagate as Tcl
+  errors and project CLI exit 2, including when valid pages were generated
+  in the same run. Check the result before publishing incremental output.
+
 ## [0.1.0] - 2026-06-22
 
 Initial public release of aurig-doc as part of the AURIG open-source FPGA

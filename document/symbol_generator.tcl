@@ -9,7 +9,11 @@
 # Parser/util closure this layer builds on (::aurig::core::analyze::* and
 # ::aurig::core::util::*). aurig-doc does not bundle core, so declare the
 # dependency explicitly (idempotent under the package index).
-package require aurig::core
+apply {{} {
+    if {[catch {package require aurig::core 0.1.0-0.3.0} message options]} {
+        return -options $options "$message. Set TCLLIBPATH to a compatible aurig-core checkout. If a conflicting version is loaded, start a fresh Tcl interpreter."
+    }
+}}
 
 namespace eval ::aurig::doc {
 

@@ -25,9 +25,13 @@ Both live under the `aurig::doc` package:
 
 - **Tcl 8.5+** (8.6 recommended). On Tcl 8.5, generated text must be
   written to regular, readable, seekable output files.
-- **AURIG Core** with `::aurig::core::util::read_vhdl_source`. Point
-  `TCLLIBPATH` at a Core checkout that provides this capability.
-  [AURIG Core](https://github.com/aurig-fpga/aurig-core)
+- **AURIG Core** on `TCLLIBPATH`. Doc 0.2.0 loads Core in the Tcl range
+  `0.1.0-0.3.0`, which includes supported Core 0.1 installations for
+  precomputed AST and symbol operations. VHDL generation requires stable
+  Core in `0.2.0-0.3.0` with `::aurig::core::util::read_vhdl_source`.
+  The upper bound is exclusive. Source operations reject alpha and beta
+  packages. Start a fresh interpreter after changing an incompatible loaded
+  Core version.
 - **tcllib** (`yaml`) — needed only by `project_documenter` when the project manifest is
   YAML. The single-file `documenter` path needs no tcllib (the parser is regex-based).
 
@@ -37,7 +41,7 @@ Document one VHDL file:
 
 ```tcl
 # aurig-core must be reachable on the package path (see "As part of the stack").
-package require aurig::doc
+package require aurig::doc 0.2.0-0.3.0
 
 # Markdown (default output name design.md)
 ::aurig::doc::documenter -input design.vhd -format md
@@ -49,7 +53,7 @@ package require aurig::doc
 Document a whole project from its manifest:
 
 ```tcl
-package require aurig::doc
+package require aurig::doc 0.2.0-0.3.0
 package require yaml   ;# tcllib, for a YAML manifest
 
 # -config <project.yaml> (or -ini <project.ini>) is required; -outdir defaults to
@@ -62,12 +66,15 @@ package require yaml   ;# tcllib, for a YAML manifest
 Generated HTML, Markdown and text reports use BOM-free UTF-8. Rejected VHDL
 sources raise a Tcl error with a structured `-errorcode`. The project
 runner (`tools/run_doc_project_inprocess.tcl`) prints the diagnostic and exits
-with status 2.
+with status 2 on source or dependency failure. A source rejection can now
+raise or return exit 2 in cases where 0.1.0 printed a message or skipped the
+source and returned success.
 
 A mixed project can generate valid pages and report the rejected sources in
 `documentation_report.txt`. Generation is incremental, so pages from an
 earlier run can remain after a failed rerun. Check the API result or CLI exit
-status before publishing the output directory. Keep source files stable
+status before publishing the output directory. Use a fresh output directory
+for a staged publication. Keep source files stable
 during generation because the parser and source viewer read them separately.
 
 ## As part of the stack (resolving AURIG Core)
@@ -81,7 +88,9 @@ TCLLIBPATH='/path/to/core' tclsh your_doc_script.tcl
 ```
 
 `package require aurig::doc` then pulls `aurig::core` transitively. On Windows, use
-forward slashes in `TCLLIBPATH`.
+forward slashes in `TCLLIBPATH`. Brace directories containing spaces as Tcl
+list elements. Select the exact Doc commit from the integration record when
+using this development version.
 
 ## Development
 
@@ -89,6 +98,9 @@ forward slashes in `TCLLIBPATH`.
 # Check out doc and its dependency side by side.
 git clone https://github.com/aurig-fpga/aurig-doc.git
 git clone https://github.com/aurig-fpga/aurig-core.git
+
+# Select the verified Core 0.2.0 candidate once published
+git -C aurig-core checkout --detach c30326cbfc979847d0426eeca4540e12e05eb0ec
 
 # Tcl 8.6 + tcllib (Debian/Ubuntu)
 sudo apt-get install -y tcl tcllib

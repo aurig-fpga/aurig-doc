@@ -25,7 +25,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: aurig-fpga/aurig-core
-          ref: 90bc534fa3ff9e881d0339a0445e6e3b0ee3c461
+          # Temporary Core 0.2.0 candidate pin. Refresh after Core squash merge.
+          ref: c30326cbfc979847d0426eeca4540e12e05eb0ec
           path: aurig-core
           persist-credentials: false
 
@@ -91,7 +92,7 @@ jobs:
         with:
           repository: aurig-fpga/aurig-core
           # Keep in sync with the Linux job.
-          ref: 90bc534fa3ff9e881d0339a0445e6e3b0ee3c461
+          ref: c30326cbfc979847d0426eeca4540e12e05eb0ec
           path: aurig-core checkout
           persist-credentials: false
 
