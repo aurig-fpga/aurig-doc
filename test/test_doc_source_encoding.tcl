@@ -104,6 +104,24 @@ end package;}
     return $expected
 }
 
+proc surrogate_cases {} {
+    # Explicit UTF-8 and surrogate-byte vectors keep the expectations
+    # independent of the host Tcl codec, including on Tcl 8.6.
+    foreach {label input expected} {
+        U+10000 eda080edb080 f0908080
+        U+10FFFF edafbfedbfbf f48fbfbf
+        adjacent eda080edb080edafbfedbfbf f0908080f48fbfbf
+        mixed 41e282aceda0bdedb880c3a95a 41e282acf09f9880c3a95a
+        empty {} {}
+        scalar_utf8 f0908080f09f9880f48fbfbf f0908080f09f9880f48fbfbf
+    } {
+        set converted [::aurig::doc::_combine_utf8_surrogates [binary format H* $input]]
+        binary scan $converted H* actual
+        check "surrogate conversion $label" [expr {$actual eq $expected}] \
+            "expected={$expected} actual={$actual}"
+    }
+}
+
 proc valid_cases {} {
     global root
     # Use explicit source and expected UTF-8 byte strings, including legacy
@@ -257,8 +275,60 @@ proc fail_second_source_read {command op} {
     }
 }
 
+proc project_cli_error {label cfg dest} {
+    global doc
+    set status [catch {
+        exec [info nameofexecutable] [file join $doc tools run_doc_project_inprocess.tcl] \
+            -manifest $cfg -outdir $dest 2>@1
+    } output options]
+    check "$label CLI exits 2" [expr {$status == 1
+        && [lindex [dict get $options -errorcode] 0] eq "CHILDSTATUS"
+        && [lindex [dict get $options -errorcode] 2] eq "2"}] $output
+    return $output
+}
+
+proc mixed_project_diagnostics {label message} {
+    foreach fragment {malformed.vhd {byte 6} nul.vhd {byte 3}} {
+        contains "$label reports $fragment" $message $fragment
+    }
+}
+
+proc no_rejected_viewers {label dest} {
+    foreach source {malformed nul} {
+        check "$label omits viewer for $source" \
+            [expr {![file exists [file join $dest src_${source}.vhd.html]]}]
+    }
+}
+
+proc mixed_project_artifacts {label dest} {
+    foreach artifact {documentation_report.txt files.html index.html valid.html src_valid.vhd.html} {
+        check "$label produces $artifact" [file isfile [file join $dest $artifact]]
+    }
+    no_rejected_viewers $label $dest
+    set report [utf8_artifact [file join $dest documentation_report.txt]]
+    contains "$label report identifies partial output" $report {REJECTED VHDL SOURCES}
+    mixed_project_diagnostics "$label report" $report
+    contains "$label report documents the valid entity" $report {Valid (from valid.vhd)}
+    check "$label report has no unconditional success claim" \
+        [expr {[string first {successfully documented} $report] < 0}]
+
+    set files [utf8_artifact [file join $dest files.html]]
+    set index [utf8_artifact [file join $dest index.html]]
+    foreach artifact {files.html index.html} listing [list $files $index] {
+        contains "$label $artifact links the valid page" $listing {href='valid.html'}
+        foreach source {malformed.vhd nul.vhd} {
+            check "$label $artifact omits $source" [expr {[string first $source $listing] < 0}]
+        }
+    }
+    contains "$label file list links the valid viewer" $files {href='src_valid.vhd.html'}
+    set page [utf8_artifact [file join $dest valid.html]]
+    contains "$label valid entity title" $page {<h1>Valid</h1>}
+    set viewer [utf8_artifact [file join $dest src_valid.vhd.html]]
+    contains "$label valid viewer source" $viewer {<textarea id='code'>entity Valid is end entity;</textarea>}
+}
+
 proc rejected_cases {} {
-    global root doc
+    global root
     set dir [file join $root rejected]
     file mkdir $dir
     write_bytes [file join $dir valid.vhd] {entity Valid is end entity;}
@@ -295,49 +365,52 @@ proc rejected_cases {} {
         check "failed viewer read does not produce $artifact" [expr {![file exists [file join $dest $artifact]]}]
     }
 
-    foreach top {{} Valid ./malformed.vhd} {
-        set cfg [manifest $dir {malformed.vhd nul.vhd valid.vhd} $top]
-        set dest [file join $dir "project [string map {/ _} $top]"]
-        set msg [expect_error "mixed project top={$top}" \
+    set sources {malformed.vhd nul.vhd valid.vhd}
+    foreach mode {flat top} top {{} Valid} {
+        set cfg [manifest $dir $sources $top]
+        set dest [file join $dir $mode api]
+        set message [expect_error "$mode mixed API error" \
             [list ::aurig::doc::project_documenter -config $cfg -outdir $dest] \
             {AURIG CORE SOURCE INVALID_UTF8 6}]
-        foreach fragment {malformed.vhd {byte 6} nul.vhd {byte 3}} {
-            contains "mixed API reports $fragment" $msg $fragment
-        }
-        foreach source {malformed nul} {
-            check "no rejected viewer $source" [expr {![file exists [file join $dest src_${source}.vhd.html]]}]
-        }
-        if {$top ne "./malformed.vhd"} {
-            check "valid entity generated" [file exists [file join $dest valid.html]]
-            check "valid viewer generated" [file exists [file join $dest src_valid.vhd.html]]
-        }
-        set report [file join $dest documentation_report.txt]
-        if {[file exists $report]} {
-            set bytes [utf8_artifact $report]
-            contains "report identifies partial output" $bytes {REJECTED VHDL SOURCES}
-            contains "report names malformed source" $bytes {malformed.vhd}
-            contains "report names NUL source" $bytes {nul.vhd}
-            check "report has no unconditional success claim" [expr {[string first {successfully documented} $bytes] < 0}]
-        }
-        if {[file exists [file join $dest files.html]]} {
-            set bytes [utf8_artifact [file join $dest files.html]]
-            check "rejected files omitted from file list" [expr {![string match {*malformed.vhd*} $bytes] && ![string match {*nul.vhd*} $bytes]}]
-        }
+        mixed_project_diagnostics "$mode API" $message
+        mixed_project_artifacts "$mode API" $dest
 
-        set status [catch {
-            exec [info nameofexecutable] [file join $doc tools run_doc_project_inprocess.tcl] \
-                -manifest $cfg -outdir [file join $dest cli] 2>@1
-        } output options]
-        check "mixed CLI exits 2" [expr {$status == 1 && [lindex [dict get $options -errorcode] 2] eq "2"}] $output
-        contains "mixed CLI error for malformed source" $output {byte 6}
-        contains "mixed CLI error for NUL source" $output {byte 3}
+        set dest [file join $dir $mode cli]
+        set message [project_cli_error "$mode mixed" $cfg $dest]
+        mixed_project_diagnostics "$mode CLI" $message
+        mixed_project_artifacts "$mode CLI" $dest
+    }
+
+    # A rejected explicit top cannot seed traversal of unrelated entities.
+    set cfg [manifest $dir $sources ./malformed.vhd]
+    set dest [file join $dir rejected_top api]
+    set message [expect_error "rejected explicit top API error" \
+        [list ::aurig::doc::project_documenter -config $cfg -outdir $dest] \
+        {AURIG CORE SOURCE INVALID_UTF8 6}]
+    mixed_project_diagnostics "rejected top API" $message
+    set cli [file join $dir rejected_top cli]
+    mixed_project_diagnostics "rejected top CLI" [project_cli_error "rejected top" $cfg $cli]
+    foreach entry {api cli} output [list $dest $cli] {
+        no_rejected_viewers "rejected top $entry" $output
+        foreach artifact {valid.html src_valid.vhd.html} {
+            check "rejected top $entry did not traverse to $artifact" \
+                [expr {![file exists [file join $output $artifact]]}]
+        }
     }
 
     set cfg [manifest $dir {valid.vhd} ./missing.vhd]
-    set dest [file join $dir missing_top]
-    expect_error "missing explicit top" \
-        [list ::aurig::doc::project_documenter -config $cfg -outdir $dest] {AURIG CORE SOURCE IO OPEN}
-    check "missing top generated no index" [expr {![file exists [file join $dest index.html]]}]
+    set dest [file join $dir missing_top api]
+    set message [expect_error "missing explicit top API error" \
+        [list ::aurig::doc::project_documenter -config $cfg -outdir $dest] {AURIG CORE SOURCE IO OPEN}]
+    contains "missing top API names path" $message {missing.vhd}
+    set cli [file join $dir missing_top cli]
+    contains "missing top CLI names path" [project_cli_error "missing top" $cfg $cli] {missing.vhd}
+    foreach entry {api cli} output [list $dest $cli] {
+        foreach artifact {index.html files.html documentation_report.txt} {
+            check "missing top $entry failed before $artifact" \
+                [expr {![file exists [file join $output $artifact]]}]
+        }
+    }
 
     # A failed rerun must leave earlier output alone while returning an error.
     write_bytes $out {preexisting artifact}
@@ -380,7 +453,7 @@ proc capability_cases {} {
 }
 
 puts "Tcl [info patchlevel] via [info nameofexecutable]; evidence=[file nativename $root]"
-foreach section {valid_cases leading_line_case report_cases rejected_cases capability_cases} {
+foreach section {surrogate_cases valid_cases leading_line_case report_cases rejected_cases capability_cases} {
     if {[catch {$section} problem options]} {
         check $section 0 [dict get $options -errorinfo]
     }
