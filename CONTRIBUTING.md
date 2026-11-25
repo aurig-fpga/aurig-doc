@@ -43,7 +43,7 @@ variable (a Tcl list of directories prepended to `::auto_path`). Point it at you
 ```sh
 # Clone the dependency next to aurig-doc
 git clone https://github.com/aurig-fpga/aurig-core ../aurig-core
-git -C ../aurig-core checkout --detach c30326cbfc979847d0426eeca4540e12e05eb0ec
+git -C ../aurig-core checkout --detach c6cd8bb44fea31b4d838452de38395c7772a3f56
 
 # Tcl 8.6 + tcllib (Debian/Ubuntu)
 sudo apt-get install -y tcl tcllib

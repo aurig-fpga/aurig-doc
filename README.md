@@ -99,8 +99,8 @@ using this development version.
 git clone https://github.com/aurig-fpga/aurig-doc.git
 git clone https://github.com/aurig-fpga/aurig-core.git
 
-# Select the verified Core 0.2.0 candidate once published
-git -C aurig-core checkout --detach c30326cbfc979847d0426eeca4540e12e05eb0ec
+# Select the verified Core 0.2.0 commit on main
+git -C aurig-core checkout --detach c6cd8bb44fea31b4d838452de38395c7772a3f56
 
 # Tcl 8.6 + tcllib (Debian/Ubuntu)
 sudo apt-get install -y tcl tcllib
